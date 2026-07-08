@@ -16,7 +16,7 @@ import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import './index.css'
 
-const faviconUrl = new URL('./img/H2 kitchen logo.png', import.meta.url).href
+const faviconUrl = new URL('./img/favicon.png', import.meta.url).href
 
 let faviconLink = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
 if (!faviconLink) {
