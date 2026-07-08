@@ -16,6 +16,17 @@ import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import './index.css'
 
+const faviconUrl = new URL('./img/H2 kitchen logo.png', import.meta.url).href
+
+let faviconLink = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+if (!faviconLink) {
+  faviconLink = document.createElement('link')
+  faviconLink.rel = 'icon'
+  document.head.appendChild(faviconLink)
+}
+faviconLink.type = 'image/png'
+faviconLink.href = faviconUrl
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
