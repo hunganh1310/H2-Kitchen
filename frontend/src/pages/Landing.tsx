@@ -103,7 +103,7 @@ export default function Landing() {
             rel="noopener noreferrer"
             className="font-medium text-indigo-400 transition-colors hover:text-indigo-300 hover:underline hover:underline-offset-2"
           >
-            Crazy Builder Lab
+            Crazy Builders Lab
           </a>
         </motion.div>
 

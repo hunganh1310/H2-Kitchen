@@ -254,6 +254,19 @@ Config files are included: [`render.yaml`](render.yaml) (backend blueprint),
 Already set up (see *External services setup*). **Network Access → allow `0.0.0.0/0`**
 (Render's free tier has no static outbound IP).
 
+### 1b. GitHub Actions CI/CD
+The repository now includes [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml).
+
+- On every pull request to `main`, it builds the frontend and backend.
+- On push to `main`, it also triggers optional deploy hooks if the secrets are set.
+
+Required GitHub repository secrets:
+
+- `VERCEL_DEPLOY_HOOK_URL` for the frontend deploy hook.
+- `RENDER_DEPLOY_HOOK_URL` for the backend deploy hook.
+
+If either secret is missing, the corresponding deploy job is skipped safely.
+
 ### 2. Backend — Render
 1. Push the repo to GitHub.
 2. Render → **New → Blueprint** → connect the repo. It reads `render.yaml`
