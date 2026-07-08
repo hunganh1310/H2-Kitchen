@@ -92,11 +92,26 @@ export default function Landing() {
           </div>
         </motion.div>
 
+        <motion.div
+          variants={fadeUp}
+          className="mt-2 text-xs text-neutral-500 sm:text-base"
+        >
+          This web is powered by{' '}
+          <a
+            href="https://www.instagram.com/crazybuilders.lab"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-indigo-400 transition-colors hover:text-indigo-300 hover:underline hover:underline-offset-2"
+          >
+            Crazy Builder Lab
+          </a>
+        </motion.div>
+
         <motion.p
           variants={fadeUp}
           className="mt-4 mb-7 max-w-md text-sm text-neutral-400 sm:text-base"
         >
-          Đồ ăn &amp; thức uống cho phòng tập nhạc — chọn món, thanh toán QR, theo dõi đơn. Không
+          Đồ ăn &amp; đồ uống cho phòng tập nhạc — chọn món, thanh toán QR, theo dõi đơn. Không
           cần đăng nhập.
         </motion.p>
 
