@@ -17,7 +17,7 @@ from .db import close_mongo_connection, connect_to_mongo, get_db
 
 # Default dev credentials. CHANGE THESE (or the passwords) before deploying.
 SEED_ADMINS = [
-    {"username": "admin", "password": "admin123", "name": "Quản lý chính"},
+    {"username": "admin", "password": "admintuat123", "name": "Quản lý chính"},
     {"username": "baristahai", "password": "hai123", "name": "Hải quầy bar"},
     {"username": "beptruong", "password": "bep123", "name": "Bếp trưởng"},
 ]

@@ -86,9 +86,9 @@ uvicorn app.main:app --reload
 
 | Username     | Password   | Name           |
 |--------------|------------|----------------|
-| `admin`      | `admin123` | Quản lý chính  |
-| `baristahai` | `hai123`   | Hải quầy bar   |
-| `beptruong`  | `bep123`   | Bếp trưởng     |
+| `admin`      | `xxx` | Quản lý chính  |
+| `baristahai` | `xxx`   | Hải quầy bar   |
+| `beptruong`  | `xxx`   | Bếp trưởng     |
 
 > ⚠️ These are development defaults. Change the passwords (in `app/seed.py`) before
 > deploying, and always set a strong `JWT_SECRET`.
