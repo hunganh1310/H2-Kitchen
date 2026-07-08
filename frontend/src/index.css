@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Fonts: Be Vietnam Pro (body, everywhere) + Dela Gothic One (brand/display) */
+@theme {
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Dela Gothic One", system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  /* Indigo-mono primary tokens (from ref.css) — used by the landing hero */
+  --indigo-primary: oklch(0.5144 0.1605 267.44);
+  --indigo-bright: oklch(0.6083 0.1247 272.72);
+  --indigo-deep: oklch(0.2571 0.1161 272.24);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-indigo-400;
+  }
+}

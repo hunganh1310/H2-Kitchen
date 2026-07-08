@@ -1,0 +1,40 @@
+# Render Blueprint for the H2 Kitchen backend.
+# In Render: New → Blueprint → connect this repo. Secret values (sync:false)
+# are prompted in the dashboard, never committed here.
+services:
+  - type: web
+    name: h2-kitchen-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: MONGODB_DB_NAME
+        value: h2_kitchen
+      - key: USE_MOCK_DB
+        value: "false"
+      - key: SEED_ON_STARTUP
+        value: "true"
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "1440"
+      # --- secrets: set these in the Render dashboard ---
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS # e.g. https://h2-kitchen.vercel.app
+        sync: false
+      - key: BANK_ACCOUNT_INFO
+        sync: false
+      - key: SEPAY_WEBHOOK_API_KEY
+        sync: false
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false

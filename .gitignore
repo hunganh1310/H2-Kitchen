@@ -1,0 +1,57 @@
+# ------------------------------------------------------------------
+# Python / FastAPI backend
+# ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ------------------------------------------------------------------
+# Node / React frontend
+# ------------------------------------------------------------------
+node_modules/
+frontend/dist/
+*.local
+
+# Vite
+frontend/.vite/
+
+# Raw/uncompressed 3D source model (59MB) — the compressed one lives in
+# frontend/public/models and IS committed. Keep the raw source out of git.
+frontend/src/3d model/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------------------------------
+# Editors / OS
+# ------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

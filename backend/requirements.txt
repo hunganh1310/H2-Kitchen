@@ -1,0 +1,25 @@
+# Core web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# MongoDB async driver
+motor==3.6.0
+
+# Config / validation
+pydantic-settings==2.7.1
+
+# Auth: JWT + password hashing
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1            # pinned: passlib 1.7.4 is incompatible with bcrypt >= 4.1
+
+# Form parsing (login form + multipart image upload)
+python-multipart==0.0.20
+
+# Product image hosting
+cloudinary==1.45.0
+
+# --- Local dev only -------------------------------------------------------
+# In-memory MongoDB so you can run the app without installing MongoDB.
+# Enabled via USE_MOCK_DB=true in .env. NOT used in production (Render/Atlas).
+mongomock-motor==0.0.35
