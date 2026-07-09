@@ -16,6 +16,9 @@ from pydantic import BaseModel, Field
 # Where the ad renders on the site.
 Placement = Literal["landing", "popup"]
 MediaType = Literal["image", "video"]
+# How often a popup ad reappears for a visitor (popup placement only):
+#   "session" = once per browser session · "always" = on every page load / refresh
+PopupFrequency = Literal["session", "always"]
 # Common creative sizes. Kept as a closed set so the UI can offer a picker and
 # the frontend can map each to a CSS aspect-ratio.
 AspectRatio = Literal["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
@@ -34,6 +37,7 @@ class AdCreate(BaseModel):
     link_url: str = ""  # click-through target (opens in a new tab); optional
     is_active: bool = True
     sort_order: int = 0  # lower shows first
+    popup_frequency: PopupFrequency = "session"  # popup placement only
 
 
 class AdUpdate(BaseModel):
@@ -46,6 +50,7 @@ class AdUpdate(BaseModel):
     link_url: str | None = None
     is_active: bool | None = None
     sort_order: int | None = None
+    popup_frequency: PopupFrequency | None = None
 
 
 class AdOut(BaseModel):
@@ -57,6 +62,7 @@ class AdOut(BaseModel):
     link_url: str
     is_active: bool
     sort_order: int
+    popup_frequency: PopupFrequency
     created_at: datetime
 
 
@@ -70,5 +76,6 @@ def to_ad_out(doc: dict) -> AdOut:
         link_url=doc.get("link_url", ""),
         is_active=bool(doc.get("is_active", True)),
         sort_order=int(doc.get("sort_order", 0)),
+        popup_frequency=doc.get("popup_frequency", "session"),
         created_at=doc.get("created_at", datetime.now()),
     )

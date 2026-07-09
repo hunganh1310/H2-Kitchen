@@ -12,6 +12,7 @@ import {
   type AdInput,
   type AdMedia,
   type AdPlacement,
+  type AdPopupFrequency,
 } from '../api/ads'
 import { useAuth } from '../context/AuthContext'
 
@@ -23,6 +24,7 @@ interface FormState {
   is_active: boolean
   sort_order: string
   media: AdMedia[]
+  popup_frequency: AdPopupFrequency
 }
 
 const EMPTY_FORM: FormState = {
@@ -33,11 +35,17 @@ const EMPTY_FORM: FormState = {
   is_active: true,
   sort_order: '0',
   media: [],
+  popup_frequency: 'session',
 }
 
 const PLACEMENT_LABEL: Record<AdPlacement, string> = {
   landing: 'Banner trang chủ',
   popup: 'Popup chào mừng',
+}
+
+const FREQ_LABEL: Record<AdPopupFrequency, string> = {
+  session: 'mỗi phiên',
+  always: 'mỗi refresh',
 }
 
 export default function AdminAds() {
@@ -85,6 +93,7 @@ export default function AdminAds() {
       is_active: ad.is_active,
       sort_order: String(ad.sort_order),
       media: ad.media.map((m) => ({ ...m })),
+      popup_frequency: ad.popup_frequency ?? 'session',
     })
     setUrlDraft('')
     setEditingId(ad.id)
@@ -109,6 +118,7 @@ export default function AdminAds() {
       is_active: form.is_active,
       sort_order: Number(form.sort_order) || 0,
       media: form.media,
+      popup_frequency: form.popup_frequency,
     }
 
     setSaving(true)
@@ -253,7 +263,9 @@ export default function AdminAds() {
                     <div className="min-w-0">
                       <p className="truncate font-medium">{ad.title || '(không tên)'}</p>
                       <p className="mt-0.5 text-xs text-neutral-500">
-                        {PLACEMENT_LABEL[ad.placement]} · {ad.aspect_ratio} · #{ad.sort_order}
+                        {PLACEMENT_LABEL[ad.placement]}
+                        {ad.placement === 'popup' && ` · ${FREQ_LABEL[ad.popup_frequency]}`} ·{' '}
+                        {ad.aspect_ratio} · #{ad.sort_order}
                       </p>
                     </div>
                     <button
@@ -343,6 +355,21 @@ export default function AdminAds() {
                   </select>
                 </Field>
               </div>
+
+              {form.placement === 'popup' && (
+                <Field label="Tần suất hiển thị popup">
+                  <select
+                    value={form.popup_frequency}
+                    onChange={(e) =>
+                      setForm({ ...form, popup_frequency: e.target.value as AdPopupFrequency })
+                    }
+                    className="input"
+                  >
+                    <option value="session">Mỗi phiên — hiện 1 lần/session</option>
+                    <option value="always">Mỗi lần tải trang — hiện mỗi khi refresh</option>
+                  </select>
+                </Field>
+              )}
 
               <Field label="Link khi bấm vào (tuỳ chọn)">
                 <input

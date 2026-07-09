@@ -5,20 +5,24 @@ import AdCarousel from './AdCarousel'
 const SEEN_KEY = 'h2_popup_seen' // once per browser session (sessionStorage)
 
 /**
- * Welcome popup ad — shown once per session when a visitor arrives, only if an
- * admin has created an active "popup" ad. No ad → renders nothing.
+ * Welcome popup ad — shown when a visitor arrives, only if an admin has created
+ * an active "popup" ad. No ad → renders nothing. Display frequency is set per ad:
+ *   - "session" → once per browser session (tracked in sessionStorage)
+ *   - "always"  → on every page load / refresh (no memory)
  */
 export default function AdPopup() {
   const [ad, setAd] = useState<Ad | null>(null)
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    if (sessionStorage.getItem(SEEN_KEY)) return
     let cancelled = false
     getAds('popup')
       .then((ads) => {
         if (cancelled || ads.length === 0) return
-        setAd(ads[0])
+        const first = ads[0]
+        // "always" ignores the once-per-session guard entirely.
+        if (first.popup_frequency !== 'always' && sessionStorage.getItem(SEEN_KEY)) return
+        setAd(first)
         setOpen(true)
       })
       .catch(() => {
@@ -30,7 +34,8 @@ export default function AdPopup() {
   }, [])
 
   function close() {
-    sessionStorage.setItem(SEEN_KEY, '1')
+    // Only remember the dismissal for session-frequency popups.
+    if (ad?.popup_frequency !== 'always') sessionStorage.setItem(SEEN_KEY, '1')
     setOpen(false)
   }
 

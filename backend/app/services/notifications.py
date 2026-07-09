@@ -77,7 +77,15 @@ def _build_discord_payload(order: dict) -> dict:
 def _post(url: str, payload: dict) -> None:
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        url, data=data, headers={"Content-Type": "application/json"}, method="POST"
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            # Discord (via Cloudflare) returns 403 Forbidden to the default
+            # "Python-urllib/x.y" User-Agent, so we must send our own.
+            "User-Agent": "H2Kitchen-Webhook/1.0 (+https://h2-kitchen.vercel.app)",
+        },
+        method="POST",
     )
     with urllib.request.urlopen(req, timeout=10) as resp:
         resp.read()

@@ -3,6 +3,8 @@ import { apiFetch, getToken } from './client'
 export type AdPlacement = 'landing' | 'popup'
 export type AdMediaType = 'image' | 'video'
 export type AdAspectRatio = '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9'
+/** How often a popup ad reappears: once per session, or on every refresh. */
+export type AdPopupFrequency = 'session' | 'always'
 
 export const ASPECT_RATIOS: AdAspectRatio[] = ['16:9', '4:3', '1:1', '3:4', '9:16', '21:9']
 
@@ -20,6 +22,7 @@ export interface Ad {
   link_url: string
   is_active: boolean
   sort_order: number
+  popup_frequency: AdPopupFrequency
   created_at: string
 }
 
@@ -31,6 +34,7 @@ export interface AdInput {
   link_url?: string
   is_active?: boolean
   sort_order?: number
+  popup_frequency?: AdPopupFrequency
 }
 
 /** CSS aspect-ratio value ("16:9" -> "16 / 9") for inline styles. */
