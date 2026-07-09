@@ -62,3 +62,17 @@ def upload_image(data: bytes, folder: str = "h2_kitchen/menu") -> str:
     _ensure_config()
     result = cloudinary.uploader.upload(data, folder=folder, resource_type="image")
     return result["secure_url"]
+
+
+def upload_media(
+    data: bytes, resource_type: str = "auto", folder: str = "h2_kitchen/ads"
+) -> str:
+    """Upload raw media bytes (image or video) and return the secure HTTPS URL.
+
+    ``resource_type="auto"`` lets Cloudinary detect image vs. video. Blocking
+    network call — run via ``run_in_threadpool`` from async handlers. For very
+    large videos prefer pasting an external URL instead of uploading.
+    """
+    _ensure_config()
+    result = cloudinary.uploader.upload(data, folder=folder, resource_type=resource_type)
+    return result["secure_url"]

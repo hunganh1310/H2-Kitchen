@@ -60,12 +60,15 @@ async def checkout(payload: CheckoutRequest, background: BackgroundTasks):
 
         available = {t["name"]: int(t["price"]) for t in item.get("toppings", [])}
         chosen = []
-        for tname in line.toppings:
-            if tname not in available:
-                raise HTTPException(status_code=400, detail=f"Topping không hợp lệ: {tname}")
-            chosen.append({"name": tname, "price": available[tname]})
+        toppings_cost = 0
+        for tp in line.toppings:
+            if tp.name not in available:
+                raise HTTPException(status_code=400, detail=f"Topping không hợp lệ: {tp.name}")
+            price = available[tp.name]
+            chosen.append({"name": tp.name, "price": price, "qty": tp.qty})
+            toppings_cost += price * tp.qty
 
-        unit_price = int(item["price"]) + sum(t["price"] for t in chosen)
+        unit_price = int(item["price"]) + toppings_cost
         line_total = unit_price * line.qty
         total += line_total
         order_items.append(

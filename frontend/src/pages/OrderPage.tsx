@@ -64,13 +64,13 @@ export default function OrderPage() {
   function handleReorder() {
     if (!order) return
     for (const it of order.items) {
-      const toppingSum = it.toppings.reduce((s, t) => s + t.price, 0)
+      const toppingSum = it.toppings.reduce((s, t) => s + t.price * t.qty, 0)
       addLine({
         menuItemId: it.menu_item_id,
         name: it.name,
         category: 'food', // category not stored on the order; harmless for cart display
         basePrice: it.unit_price - toppingSum,
-        toppings: it.toppings,
+        toppings: it.toppings.map((t) => ({ name: t.name, price: t.price, qty: t.qty })),
         note: it.note ?? '',
         qty: it.qty,
         maxQty: 99,
@@ -139,7 +139,7 @@ export default function OrderPage() {
                     </p>
                     {it.toppings.length > 0 && (
                       <p className="mt-0.5 text-xs text-neutral-400">
-                        + {it.toppings.map((t) => t.name).join(', ')}
+                        + {it.toppings.map((t) => (t.qty > 1 ? `${t.qty}× ${t.name}` : t.name)).join(', ')}
                       </p>
                     )}
                     {it.note && <p className="mt-0.5 text-xs italic text-neutral-500">“{it.note}”</p>}

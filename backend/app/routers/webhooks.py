@@ -10,10 +10,11 @@ SePay lets you configure this exact header + value in its webhook settings.
 """
 import re
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, status
 
 from ..core.config import settings
 from ..db import get_db
+from ..services.notifications import send_payment_confirmed_notification
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -23,7 +24,11 @@ _ORDER_CODE_RE = re.compile(r"H2[A-Z0-9]{6}")
 
 
 @router.post("/sepay")
-async def sepay_webhook(payload: dict, authorization: str | None = Header(default=None)):
+async def sepay_webhook(
+    payload: dict,
+    background: BackgroundTasks,
+    authorization: str | None = Header(default=None),
+):
     if not settings.sepay_webhook_api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -70,4 +75,6 @@ async def sepay_webhook(payload: dict, authorization: str | None = Header(defaul
             }
         },
     )
+    # Ping admins on Discord that the transfer landed (best-effort, after response).
+    background.add_task(send_payment_confirmed_notification, order)
     return {"success": True, "order_code": order_code, "marked_paid": True}

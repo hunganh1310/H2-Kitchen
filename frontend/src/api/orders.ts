@@ -4,10 +4,15 @@ export type OrderStatus = 'pending' | 'preparing' | 'done' | 'cancelled'
 export type PaymentStatus = 'unpaid' | 'paid'
 export type PaymentMethod = 'vietqr' | 'cash'
 
+export interface CheckoutTopping {
+  name: string
+  qty: number
+}
+
 export interface CheckoutItem {
   menu_item_id: string
   qty: number
-  toppings: string[]
+  toppings: CheckoutTopping[]
   note?: string | null
 }
 
@@ -23,7 +28,7 @@ export interface OrderItem {
   menu_item_id: string
   name: string
   qty: number
-  toppings: { name: string; price: number }[]
+  toppings: { name: string; price: number; qty: number }[]
   unit_price: number
   price: number
   note?: string | null

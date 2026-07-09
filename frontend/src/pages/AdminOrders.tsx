@@ -186,7 +186,10 @@ function OrderCard({
           <li key={i} className="text-neutral-300">
             <span className="text-neutral-500">{it.qty}×</span> {it.name}
             {it.toppings.length > 0 && (
-              <span className="text-neutral-500"> (+{it.toppings.map((t) => t.name).join(', ')})</span>
+              <span className="text-neutral-500">
+                {' '}
+                (+{it.toppings.map((t) => (t.qty > 1 ? `${t.qty}× ${t.name}` : t.name)).join(', ')})
+              </span>
             )}
             {it.note && <span className="italic text-indigo-300/80"> — “{it.note}”</span>}
           </li>

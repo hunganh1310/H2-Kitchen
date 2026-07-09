@@ -6,7 +6,7 @@ Prices are re-computed server-side from the menu; client-sent prices are ignored
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..services.vietqr import build_vietqr
 
@@ -19,11 +19,26 @@ CancelledBy = Literal["customer", "admin"]
 # --- Checkout (request) ---------------------------------------------------
 
 
+class CheckoutTopping(BaseModel):
+    """A selected topping with how many of it (e.g. x2 bò viên)."""
+
+    name: str = Field(..., min_length=1)
+    qty: int = Field(1, ge=1, le=20)
+
+
 class CheckoutItem(BaseModel):
     menu_item_id: str
     qty: int = Field(..., ge=1, le=99)
-    toppings: list[str] = Field(default_factory=list)  # selected topping names
+    toppings: list[CheckoutTopping] = Field(default_factory=list)
     note: str | None = Field(None, max_length=200)
+
+    @field_validator("toppings", mode="before")
+    @classmethod
+    def _coerce_toppings(cls, v):
+        # Accept legacy ["name", …] payloads alongside [{"name","qty"}, …].
+        if isinstance(v, list):
+            return [{"name": t, "qty": 1} if isinstance(t, str) else t for t in v]
+        return v
 
 
 class CheckoutRequest(BaseModel):
@@ -46,7 +61,8 @@ class OrderAdminUpdate(BaseModel):
 
 class OrderItemTopping(BaseModel):
     name: str
-    price: int
+    price: int  # per-unit topping price
+    qty: int = 1  # how many of this topping on the item
 
 
 class OrderItemOut(BaseModel):
@@ -95,7 +111,12 @@ def to_order_out(doc: dict) -> OrderOut:
             menu_item_id=i["menu_item_id"],
             name=i["name"],
             qty=i["qty"],
-            toppings=[OrderItemTopping(**t) for t in i.get("toppings", [])],
+            toppings=[
+                OrderItemTopping(
+                    name=t["name"], price=int(t["price"]), qty=int(t.get("qty", 1))
+                )
+                for t in i.get("toppings", [])
+            ],
             unit_price=int(i.get("unit_price", i["price"] // max(i["qty"], 1))),
             price=int(i["price"]),
             note=i.get("note"),

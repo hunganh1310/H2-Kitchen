@@ -2,6 +2,7 @@
 
 Run locally:  uvicorn app.main:app --reload
 """
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -9,10 +10,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
 from .db import close_mongo_connection, connect_to_mongo, get_db
+
+logger = logging.getLogger("h2")
 from .routers import (
     admin_account,
     admin_menu,
     admin_orders,
+    ads,
     auth,
     kitchen,
     menu,
@@ -29,6 +33,14 @@ async def lifespan(app: FastAPI):
     if settings.seed_on_startup:
         await seed_admins(get_db())
         await seed_menu(get_db())
+    # Surface a missing Discord webhook early — the #1 cause of "no order pings".
+    if settings.discord_webhook_url:
+        logger.info("Discord notifications enabled.")
+    else:
+        logger.warning(
+            "DISCORD_WEBHOOK_URL is not set — new-order/paid notifications are disabled. "
+            "Set it in the Render environment (it is not read from a gitignored .env there)."
+        )
     yield
     # --- shutdown ---
     await close_mongo_connection()
@@ -56,6 +68,9 @@ app.include_router(admin_orders.router)
 # Kitchen open/close: public status + admin control.
 app.include_router(kitchen.router)
 app.include_router(kitchen.admin_router)
+# Ads/promo banners: public listing + admin CRUD + media upload.
+app.include_router(ads.public_router)
+app.include_router(ads.admin_router)
 # Bank transfer webhook: auto-confirm VietQR payments.
 app.include_router(webhooks.router)
 

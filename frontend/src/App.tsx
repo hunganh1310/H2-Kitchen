@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminAds from './pages/AdminAds'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminMenu from './pages/AdminMenu'
 import AdminOrders from './pages/AdminOrders'
@@ -65,6 +66,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <AdminOrders />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/ads"
+        element={
+          <ProtectedRoute>
+            <AdminAds />
           </ProtectedRoute>
         }
       />

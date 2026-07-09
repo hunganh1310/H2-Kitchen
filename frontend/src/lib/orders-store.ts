@@ -8,6 +8,9 @@ export interface SavedOrder {
   createdAt: string
   total: number
   name: string
+  /** Short item summary, e.g. "1 Mì trộn Indomie, 1 Coca-Cola". Optional for
+   *  orders saved before this field existed. */
+  summary?: string
 }
 
 export function getMyOrders(): SavedOrder[] {

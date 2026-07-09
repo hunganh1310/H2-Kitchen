@@ -3,18 +3,22 @@ import type { MenuItem } from '../api/menu'
 import { useCart, type CartTopping } from '../context/CartContext'
 import { formatVnd } from '../lib/format'
 
+const MAX_TOPPING_QTY = 20
+
 export default function ProductModal({ item, onClose }: { item: MenuItem; onClose: () => void }) {
   const { addLine } = useCart()
-  const [selected, setSelected] = useState<Record<string, boolean>>({})
+  const [toppingQty, setToppingQty] = useState<Record<string, number>>({})
   const [note, setNote] = useState('')
   const [qty, setQty] = useState(1)
 
-  const chosen: CartTopping[] = item.toppings.filter((t) => selected[t.name])
-  const unit = item.price + chosen.reduce((s, t) => s + t.price, 0)
+  const chosen: CartTopping[] = item.toppings
+    .map((t) => ({ name: t.name, price: t.price, qty: toppingQty[t.name] || 0 }))
+    .filter((t) => t.qty > 0)
+  const unit = item.price + chosen.reduce((s, t) => s + t.price * t.qty, 0)
   const soldOut = !item.in_stock
 
-  function toggle(name: string) {
-    setSelected((s) => ({ ...s, [name]: !s[name] }))
+  function setTopping(name: string, next: number) {
+    setToppingQty((s) => ({ ...s, [name]: Math.max(0, Math.min(next, MAX_TOPPING_QTY)) }))
   }
 
   function handleAdd() {
@@ -60,25 +64,46 @@ export default function ProductModal({ item, onClose }: { item: MenuItem; onClos
 
           {item.toppings.length > 0 && (
             <div className="mt-5">
-              <h3 className="mb-2 text-sm font-semibold text-neutral-300">Topping</h3>
+              <h3 className="mb-2 text-sm font-semibold text-neutral-300">
+                Topping <span className="font-normal text-neutral-500">— chọn số lượng</span>
+              </h3>
               <div className="space-y-2">
-                {item.toppings.map((t) => (
-                  <label
-                    key={t.name}
-                    className="flex cursor-pointer items-center justify-between rounded-lg border border-neutral-800 px-3 py-2.5"
-                  >
-                    <span className="flex items-center gap-3 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={!!selected[t.name]}
-                        onChange={() => toggle(t.name)}
-                        className="h-4 w-4 accent-indigo-400"
-                      />
-                      {t.name}
-                    </span>
-                    <span className="text-sm text-neutral-400">+{formatVnd(t.price)}</span>
-                  </label>
-                ))}
+                {item.toppings.map((t) => {
+                  const q = toppingQty[t.name] || 0
+                  return (
+                    <div
+                      key={t.name}
+                      className={`flex items-center justify-between rounded-lg border px-3 py-2 transition-colors ${
+                        q > 0 ? 'border-indigo-400/60 bg-indigo-400/5' : 'border-neutral-800'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <span className="text-sm">{t.name}</span>
+                        <span className="ml-2 text-xs text-neutral-400">+{formatVnd(t.price)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTopping(t.name, q - 1)}
+                          disabled={q === 0}
+                          className="h-7 w-7 rounded-md border border-neutral-700 text-base leading-none hover:border-neutral-500 disabled:opacity-30"
+                          aria-label={`Bớt ${t.name}`}
+                        >
+                          −
+                        </button>
+                        <span className="w-5 text-center text-sm font-semibold">{q}</span>
+                        <button
+                          type="button"
+                          onClick={() => setTopping(t.name, q + 1)}
+                          className="h-7 w-7 rounded-md border border-neutral-700 text-base leading-none hover:border-neutral-500"
+                          aria-label={`Thêm ${t.name}`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}

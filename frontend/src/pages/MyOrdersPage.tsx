@@ -50,15 +50,19 @@ export default function MyOrdersPage() {
               <li key={o.code}>
                 <Link
                   to={`/order/${o.code}`}
-                  className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 transition hover:border-neutral-700"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 transition hover:border-neutral-700"
                 >
-                  <div>
-                    <p className="font-mono font-semibold tracking-wider text-indigo-400">{o.code}</p>
-                    <p className="mt-0.5 text-xs text-neutral-500">
-                      {new Date(o.createdAt).toLocaleString('vi-VN')}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-neutral-100">
+                      {o.summary || o.name || o.code}
+                    </p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-neutral-500">
+                      <span className="font-mono tracking-wider text-indigo-400">{o.code}</span>
+                      <span>·</span>
+                      <span>{new Date(o.createdAt).toLocaleString('vi-VN')}</span>
                     </p>
                   </div>
-                  <span className="font-semibold">{formatVnd(o.total)}</span>
+                  <span className="shrink-0 font-semibold">{formatVnd(o.total)}</span>
                 </Link>
               </li>
             ))}

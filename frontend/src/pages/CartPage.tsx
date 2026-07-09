@@ -48,7 +48,7 @@ export default function CartPage() {
         items: lines.map((l) => ({
           menu_item_id: l.menuItemId,
           qty: l.qty,
-          toppings: l.toppings.map((t) => t.name),
+          toppings: l.toppings.map((t) => ({ name: t.name, qty: t.qty })),
           note: l.note || null,
         })),
       })
@@ -57,6 +57,7 @@ export default function CartPage() {
         createdAt: order.created_at,
         total: order.total,
         name: order.customer_name,
+        summary: order.items.map((it) => `${it.qty} ${it.name}`).join(', '),
       })
       clear()
       navigate(`/order/${order.order_code}`, { replace: true })
@@ -100,7 +101,7 @@ export default function CartPage() {
                       <p className="font-semibold">{l.name}</p>
                       {l.toppings.length > 0 && (
                         <p className="mt-0.5 text-xs text-neutral-400">
-                          + {l.toppings.map((t) => t.name).join(', ')}
+                          + {l.toppings.map((t) => (t.qty > 1 ? `${t.qty}× ${t.name}` : t.name)).join(', ')}
                         </p>
                       )}
                       {l.note && <p className="mt-0.5 text-xs italic text-neutral-500">“{l.note}”</p>}

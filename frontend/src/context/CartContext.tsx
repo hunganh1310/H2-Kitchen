@@ -4,6 +4,7 @@ import type { Category } from '../api/menu'
 export interface CartTopping {
   name: string
   price: number
+  qty: number // how many of this topping (e.g. x2 bò viên)
 }
 
 export interface CartLine {
@@ -33,14 +34,14 @@ interface CartState {
 const CartContext = createContext<CartState | undefined>(undefined)
 const STORAGE_KEY = 'h2_cart'
 
-/** Two lines merge only if the same product, toppings, and note. */
+/** Two lines merge only if the same product, toppings (name + qty), and note. */
 function makeKey(line: Pick<NewCartLine, 'menuItemId' | 'toppings' | 'note'>): string {
-  const toppings = [...line.toppings.map((t) => t.name)].sort().join(',')
+  const toppings = [...line.toppings.map((t) => `${t.name}x${t.qty}`)].sort().join(',')
   return `${line.menuItemId}|${toppings}|${line.note.trim()}`
 }
 
 export function lineTotal(line: CartLine): number {
-  const unit = line.basePrice + line.toppings.reduce((s, t) => s + t.price, 0)
+  const unit = line.basePrice + line.toppings.reduce((s, t) => s + t.price * t.qty, 0)
   return unit * line.qty
 }
 
@@ -48,7 +49,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      return raw ? (JSON.parse(raw) as CartLine[]) : []
+      if (!raw) return []
+      const parsed = JSON.parse(raw) as CartLine[]
+      // Migrate carts saved before per-topping quantities existed.
+      return parsed.map((l) => ({
+        ...l,
+        toppings: (l.toppings ?? []).map((t) => ({ ...t, qty: t.qty ?? 1 })),
+      }))
     } catch {
       return []
     }

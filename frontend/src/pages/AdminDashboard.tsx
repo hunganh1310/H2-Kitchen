@@ -55,6 +55,7 @@ export default function AdminDashboard() {
           {([
             { label: 'Đơn hàng', to: '/admin/orders', hint: 'Xem & xử lý đơn, đóng/mở bếp' },
             { label: 'Quản lý menu', to: '/admin/menu', hint: 'Sản phẩm, topping, tồn kho' },
+            { label: 'Quảng cáo', to: '/admin/ads', hint: 'Banner trang chủ & popup' },
             { label: 'Thống kê', hint: 'Sắp ra mắt' },
           ] as const).map((card) => {
             const inner = (

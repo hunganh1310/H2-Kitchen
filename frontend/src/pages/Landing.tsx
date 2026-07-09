@@ -1,6 +1,9 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
+import { getAds, type Ad } from '../api/ads'
+import AdCarousel from '../components/AdCarousel'
+import AdPopup from '../components/AdPopup'
 
 // The 3D scene is a separate chunk — loads after the hero shell paints.
 const BowlScene = lazy(() => import('../components/BowlScene'))
@@ -22,12 +25,6 @@ const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   show: { opacity: 1, y: 0 },
 }
-
-const FEATURES = [
-  { icon: '⚡', title: 'Nhanh gọn', desc: 'Chọn món → giỏ → xong trong vài chạm' },
-  { icon: '📱', title: 'Không đăng nhập', desc: 'Đặt ẩn danh, theo dõi bằng mã đơn' },
-  { icon: '🏷️', title: 'Thanh toán QR', desc: 'Quét VietQR, tự động xác nhận' },
-]
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -92,10 +89,7 @@ export default function Landing() {
           </div>
         </motion.div>
 
-        <motion.div
-          variants={fadeUp}
-          className="mt-2 text-xs text-neutral-500 sm:text-base"
-        >
+        <motion.div variants={fadeUp} className="mt-2 text-xs text-neutral-500 sm:text-base">
           This web is powered by{' '}
           <a
             href="https://www.instagram.com/crazybuilders.lab"
@@ -107,10 +101,7 @@ export default function Landing() {
           </a>
         </motion.div>
 
-        <motion.p
-          variants={fadeUp}
-          className="mt-4 mb-7 max-w-md text-sm text-neutral-400 sm:text-base"
-        >
+        <motion.p variants={fadeUp} className="mt-4 mb-7 max-w-md text-sm text-neutral-400 sm:text-base">
           Đồ ăn &amp; đồ uống cho phòng tập nhạc — chọn món, thanh toán QR, theo dõi đơn. Không
           cần đăng nhập.
         </motion.p>
@@ -138,26 +129,134 @@ export default function Landing() {
         </motion.div>
       </motion.section>
 
-      {/* Scroll-reveal mini features */}
-      <section className="relative z-10 mx-auto max-w-3xl px-5 pb-20">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {FEATURES.map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ delay: i * 0.1, duration: 0.5 }}
-              className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5 text-center"
-            >
-              <div className="text-2xl">{f.icon}</div>
-              <div className="mt-2 text-sm font-semibold text-neutral-200">{f.title}</div>
-              <div className="mt-1 text-xs text-neutral-500">{f.desc}</div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      {/* Sponsor / promo banners (merch, shows, tickets, affiliate…).
+          Admin-managed via /admin/ads — nothing renders here until an ad exists. */}
+      <AdSection />
+
+      {/* Company footer — EDIT THE PLACEHOLDERS BELOW with your real info. */}
+      <SiteFooter />
+
+      {/* Welcome popup ad — shows once per session if a "popup" ad exists. */}
+      <AdPopup />
     </div>
+  )
+}
+
+function AdSection() {
+  const [ads, setAds] = useState<Ad[]>([])
+
+  useEffect(() => {
+    getAds('landing')
+      .then(setAds)
+      .catch(() => setAds([]))
+  }, [])
+
+  // Only render when an admin has active landing ads. The public /ads endpoint
+  // returns active ads only, so an empty list = nothing to show → render nothing.
+  if (ads.length === 0) return null
+
+  return (
+    <section className="relative z-10 mx-auto max-w-5xl px-5 pb-20">
+      <SectionHeading />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {ads.map((ad, i) => (
+          <motion.div
+            key={ad.id}
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ delay: (i % 3) * 0.08, duration: 0.5 }}
+          >
+            <AdCarousel ad={ad} />
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function SectionHeading() {
+  // Be Vietnam Pro (bold) — Dela Gothic One has no Vietnamese glyphs, so any
+  // Vietnamese title must use the body font instead of font-display.
+  return (
+    <div className="mb-6 text-center">
+      {/* PLACEHOLDER heading — change to suit. */}
+      <h2 className="text-2xl font-bold tracking-tight text-neutral-100 sm:text-3xl">
+        Sự kiện &amp; Ưu đãi
+      </h2>
+      <p className="mt-1 text-sm text-neutral-500">Show, merch &amp; ưu đãi từ các đối tác</p>
+    </div>
+  )
+}
+
+function SiteFooter() {
+  return (
+    <footer className="relative z-10 border-t border-neutral-900 bg-neutral-950/80">
+      <div className="mx-auto max-w-5xl px-5 py-12">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {/* --- Brand --- */}
+          <div className="lg:col-span-2">
+            <span className="font-display text-xl tracking-wide text-neutral-200">
+              H<span className="text-indigo-400">2</span> Kitchen
+            </span>
+            {/* PLACEHOLDER tagline */}
+            <p className="mt-3 max-w-xs text-sm text-neutral-500">
+              {'Powered by H2 Studio - Band Studio & Music Instruments Rental & Backstage Services.'}
+            </p>
+          </div>
+
+          {/* --- Contact (PLACEHOLDERS) --- */}
+          <div>
+            <h3 className="text-sm font-semibold text-neutral-300">Liên hệ</h3>
+            <ul className="mt-3 space-y-2 text-sm text-neutral-500">
+              <li>
+                <a href="tel:{{PHONE}}" className="hover:text-indigo-300">
+                  {'+84 834073222'}
+                </a>
+              </li>
+              <li>
+                <a href="mailto:{{EMAIL}}" className="hover:text-indigo-300">
+                  {'h2studio2022@gmail.com'}
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* --- Socials (PLACEHOLDERS) --- */}
+          <div>
+            <h3 className="text-sm font-semibold text-neutral-300">Theo dõi</h3>
+            <ul className="mt-3 space-y-2 text-sm text-neutral-500">
+              <li>
+                <a href="https://www.facebook.com/h2studio2022" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-300">
+                  Facebook
+                </a>
+              </li>
+              <li>
+                <a href="https://www.instagram.com/h2studio.vuive" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-300">
+                  Instagram
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-10 flex flex-col items-center justify-between gap-2 border-t border-neutral-900 pt-6 text-xs text-neutral-600 sm:flex-row">
+          {/* PLACEHOLDER copyright */}
+          <span>© {new Date().getFullYear()} {'H2 Studio'}. All rights reserved.</span>
+          <span>
+            Powered by{' '}
+            <a
+              href="https://www.instagram.com/crazybuilders.lab"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-neutral-500 hover:text-indigo-300"
+            >
+              Crazy Builders Lab
+            </a>
+          </span>
+        </div>
+      </div>
+    </footer>
   )
 }
 
