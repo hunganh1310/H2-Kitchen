@@ -48,19 +48,19 @@ export default function AdPopup() {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md"
+        className="relative w-full max-w-2xl"
         style={{ animation: 'h2-pop 0.25s ease-out' }}
       >
         <button
           type="button"
           onClick={close}
           aria-label="Đóng"
-          className="absolute -top-3 -right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-neutral-700 bg-neutral-900 text-neutral-300 shadow-lg transition hover:text-white"
+          className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-sm text-white shadow-md backdrop-blur-sm transition hover:bg-black/75"
         >
           ✕
         </button>
         <div className="flex flex-col items-center">
-          <AdCarousel ad={ad} />
+          <AdCarousel ad={ad} boxClassName="max-h-[80dvh]" />
           {ad.link_url && (
             <p className="mt-2 w-full text-center text-xs text-neutral-500">
               Bấm vào ảnh để xem thêm →

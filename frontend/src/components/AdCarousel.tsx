@@ -10,10 +10,13 @@ export default function AdCarousel({
   ad,
   rounded = 'rounded-2xl',
   autoAdvanceMs = 4500,
+  boxClassName = '',
 }: {
   ad: Ad
   rounded?: string
   autoAdvanceMs?: number
+  /** Extra classes for the media box — e.g. a max-height cap so popups fit the screen. */
+  boxClassName?: string
 }) {
   const [idx, setIdx] = useState(0)
   const media = ad.media ?? []
@@ -30,7 +33,7 @@ export default function AdCarousel({
   const content = (
     <>
       <div
-        className={`relative w-full overflow-hidden border border-neutral-800 bg-neutral-900 ${rounded}`}
+        className={`relative w-full overflow-hidden border border-neutral-800 bg-neutral-900 ${rounded} ${boxClassName}`}
         style={{ aspectRatio: aspectCss(ad.aspect_ratio) }}
       >
         {media.map((m, i) => (
