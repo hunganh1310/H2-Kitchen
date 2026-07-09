@@ -27,37 +27,45 @@ export default function AdCarousel({
 
   if (count === 0) return null
 
-  const box = (
-    <div
-      className={`relative w-full overflow-hidden border border-neutral-800 bg-neutral-900 ${rounded}`}
-      style={{ aspectRatio: aspectCss(ad.aspect_ratio) }}
-    >
-      {media.map((m, i) => (
-        <MediaLayer key={i} media={m} active={i === idx} alt={ad.title} />
-      ))}
+  const content = (
+    <>
+      <div
+        className={`relative w-full overflow-hidden border border-neutral-800 bg-neutral-900 ${rounded}`}
+        style={{ aspectRatio: aspectCss(ad.aspect_ratio) }}
+      >
+        {media.map((m, i) => (
+          <MediaLayer key={i} media={m} active={i === idx} alt={ad.caption || ad.title} />
+        ))}
 
-      {count > 1 && (
-        <div className="absolute inset-x-0 bottom-2 z-10 flex justify-center gap-1.5">
-          {media.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              aria-label={`Ảnh ${i + 1}`}
-              onClick={(e) => {
-                e.preventDefault()
-                setIdx(i)
-              }}
-              className={`h-1.5 rounded-full transition-all ${
-                i === idx ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
-              }`}
-            />
-          ))}
-        </div>
+        {count > 1 && (
+          <div className="absolute inset-x-0 bottom-2 z-10 flex justify-center gap-1.5">
+            {media.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Ảnh ${i + 1}`}
+                onClick={(e) => {
+                  e.preventDefault()
+                  setIdx(i)
+                }}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === idx ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {ad.caption && (
+        <p className="mt-2 text-sm font-medium text-neutral-300 transition-colors group-hover:text-indigo-300">
+          {ad.caption}
+        </p>
       )}
-    </div>
+    </>
   )
 
-  if (!ad.link_url) return box
+  if (!ad.link_url) return <div>{content}</div>
 
   return (
     <a
@@ -65,9 +73,9 @@ export default function AdCarousel({
       target="_blank"
       rel="noopener noreferrer sponsored"
       className="group block transition-transform hover:-translate-y-0.5"
-      aria-label={ad.title || 'Quảng cáo'}
+      aria-label={ad.caption || ad.title || 'Quảng cáo'}
     >
-      {box}
+      {content}
     </a>
   )
 }

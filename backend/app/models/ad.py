@@ -31,6 +31,7 @@ class AdMedia(BaseModel):
 
 class AdCreate(BaseModel):
     title: str = ""  # internal label (not shown to customers)
+    caption: str = ""  # short display title shown on the ad (customer-facing)
     placement: Placement = "landing"
     media: list[AdMedia] = Field(default_factory=list)
     aspect_ratio: AspectRatio = "16:9"
@@ -44,6 +45,7 @@ class AdUpdate(BaseModel):
     """Partial update — only the fields sent are changed."""
 
     title: str | None = None
+    caption: str | None = None
     placement: Placement | None = None
     media: list[AdMedia] | None = None
     aspect_ratio: AspectRatio | None = None
@@ -56,6 +58,7 @@ class AdUpdate(BaseModel):
 class AdOut(BaseModel):
     id: str
     title: str
+    caption: str
     placement: Placement
     media: list[AdMedia]
     aspect_ratio: AspectRatio
@@ -70,6 +73,7 @@ def to_ad_out(doc: dict) -> AdOut:
     return AdOut(
         id=str(doc["_id"]),
         title=doc.get("title", ""),
+        caption=doc.get("caption", ""),
         placement=doc.get("placement", "landing"),
         media=[AdMedia(**m) for m in doc.get("media", [])],
         aspect_ratio=doc.get("aspect_ratio", "16:9"),

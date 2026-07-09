@@ -16,6 +16,7 @@ export interface AdMedia {
 export interface Ad {
   id: string
   title: string
+  caption: string
   placement: AdPlacement
   media: AdMedia[]
   aspect_ratio: AdAspectRatio
@@ -28,6 +29,7 @@ export interface Ad {
 
 export interface AdInput {
   title?: string
+  caption?: string
   placement?: AdPlacement
   media?: AdMedia[]
   aspect_ratio?: AdAspectRatio

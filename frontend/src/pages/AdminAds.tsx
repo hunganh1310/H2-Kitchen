@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext'
 
 interface FormState {
   title: string
+  caption: string
   placement: AdPlacement
   aspect_ratio: AdAspectRatio
   link_url: string
@@ -29,6 +30,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   title: '',
+  caption: '',
   placement: 'landing',
   aspect_ratio: '16:9',
   link_url: '',
@@ -87,6 +89,7 @@ export default function AdminAds() {
   function openEdit(ad: Ad) {
     setForm({
       title: ad.title,
+      caption: ad.caption ?? '',
       placement: ad.placement,
       aspect_ratio: ad.aspect_ratio,
       link_url: ad.link_url,
@@ -112,6 +115,7 @@ export default function AdminAds() {
 
     const payload: AdInput = {
       title: form.title.trim(),
+      caption: form.caption.trim(),
       placement: form.placement,
       aspect_ratio: form.aspect_ratio,
       link_url: form.link_url.trim(),
@@ -261,7 +265,9 @@ export default function AdminAds() {
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate font-medium">{ad.title || '(không tên)'}</p>
+                      <p className="truncate font-medium">
+                        {ad.title || ad.caption || '(không tên)'}
+                      </p>
                       <p className="mt-0.5 text-xs text-neutral-500">
                         {PLACEMENT_LABEL[ad.placement]}
                         {ad.placement === 'popup' && ` · ${FREQ_LABEL[ad.popup_frequency]}`} ·{' '}
@@ -320,9 +326,18 @@ export default function AdminAds() {
                 <input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="VD: Show đêm nhạc tháng 8"
+                  placeholder="VD: Show đêm nhạc tháng 8 (chỉ admin thấy)"
                   className="input"
                   autoFocus
+                />
+              </Field>
+
+              <Field label="Tiêu đề hiển thị (khách thấy, tuỳ chọn)">
+                <input
+                  value={form.caption}
+                  onChange={(e) => setForm({ ...form, caption: e.target.value })}
+                  placeholder="VD: 🎸 Đêm nhạc Acoustic — 20/08"
+                  className="input"
                 />
               </Field>
 
