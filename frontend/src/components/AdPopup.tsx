@@ -59,10 +59,14 @@ export default function AdPopup() {
         >
           ✕
         </button>
-        <AdCarousel ad={ad} />
-        {ad.link_url && (
-          <p className="mt-2 text-center text-xs text-neutral-500">Bấm vào ảnh để xem thêm →</p>
-        )}
+        <div className="flex flex-col items-center">
+          <AdCarousel ad={ad} />
+          {ad.link_url && (
+            <p className="mt-2 w-full text-center text-xs text-neutral-500">
+              Bấm vào ảnh để xem thêm →
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )

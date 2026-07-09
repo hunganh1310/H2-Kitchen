@@ -58,7 +58,7 @@ export default function AdCarousel({
       </div>
 
       {ad.caption && (
-        <p className="mt-2 text-sm font-medium text-neutral-300 transition-colors group-hover:text-indigo-300">
+        <p className="mt-2 w-full text-center text-sm font-medium text-neutral-300 transition-colors group-hover:text-indigo-300">
           {ad.caption}
         </p>
       )}

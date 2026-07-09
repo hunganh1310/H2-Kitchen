@@ -113,7 +113,7 @@ export default function ProductModal({ item, onClose }: { item: MenuItem; onClos
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="VD: ít cay, không hành…"
+              placeholder="VD: không cay, không lạnh,..."
               className="input"
             />
           </div>
