@@ -1,294 +1,290 @@
-# H2 Kitchen — Band Room F&B Ordering System
+<div align="center">
 
-Internal food & drink ordering system for a band rehearsal room. Customers order
-without any account; only admins log in. See [CLAUDE.md](./CLAUDE.md) for the full
-scope, tech stack, and roadmap.
+# 🍜 H2 Kitchen
 
-Progress against the roadmap:
+**A lightweight, self‑hosted food & drink ordering system for small venues.**
+No customer accounts. QR payments with auto‑confirmation. Real‑time kitchen status. Built for a band rehearsal room — useful for any café, pop‑up, or small kitchen.
 
-- **Step 1 — Project skeleton** ✅ FastAPI + React, MongoDB connection, admin JWT auth.
-- **Step 2 — Menu** ✅ Admin menu CRUD (products, toppings, inventory, visibility,
-  Cloudinary image upload) + public customer menu display.
-- **Step 3 — Cart & ordering** ✅ Customer cart (toppings, notes, quantities),
-  checkout (auto stock decrement), order tracking by code (no login, saved in
-  `localStorage`), self-cancel while pending (restocks). Mobile-first UI.
-- **Step 4 — Admin orders & kitchen** ✅ Admin order list (filter by status,
-  live polling), status flow (nhận làm → hoàn thành / huỷ), mark paid, admin
-  cancel (restocks). Kitchen open/close toggle that blocks new orders (403) and
-  shows a banner to customers.
-- **Step 5 — VietQR payment + auto-confirm** ✅ VietQR orders return a QR image
-  URL (img.vietqr.io) with the exact amount + order code pre-filled; the order
-  page shows the QR + bank details (copy buttons). A **SePay bank webhook**
-  (`POST /webhooks/sepay`) auto-marks orders paid when the transfer arrives —
-  no admin action needed (manual "mark paid" remains as fallback). Cash orders
-  skip the QR. Config via `BANK_ACCOUNT_INFO` + `SEPAY_WEBHOOK_API_KEY`.
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.11x-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-- **Step 6 — Discord notifications** ✅ On each new order the backend posts a
-  Discord webhook message (customer, room, phone, total, time, items + toppings +
-  notes) via a swappable `notifications` module. Fire-and-forget (a failed webhook
-  never breaks checkout). Config via `DISCORD_WEBHOOK_URL`.
-
-- **Step 7 — Landing + theme (in progress)** ✅ New 3D landing at `/` (React Three
-  Fiber bowl + Framer Motion, lazy-loaded so the heavy 3D chunk stays off every
-  other route; mobile/reduced-motion tuned; error-boundary fallback). Site retheme
-  to **indigo-mono**. The customer menu moved from `/` to `/order`.
-
-Remaining: further UI polish + deploy (step 8).
-
-```
-H2 Kitchen/
-├── backend/     FastAPI + Motor (MongoDB) + JWT auth
-├── frontend/    React (Vite) + TypeScript + Tailwind CSS
-└── CLAUDE.md    Project reference (scope, data model, roadmap)
-```
-
-## Prerequisites
-
-- **Python 3.11+**
-- **Node.js 18+** and npm
-- **MongoDB** — a running instance (local or [Atlas](https://www.mongodb.com/atlas)).
-  Don't have one locally? Set `USE_MOCK_DB=true` in `backend/.env` to run against an
-  in-memory mock (dev only — data is not persisted).
+</div>
 
 ---
 
-## Backend (FastAPI)
+## ✨ Why H2 Kitchen?
+
+Most ordering systems assume customer sign‑ups, loyalty accounts, and a payment gateway.
+A small venue rarely needs any of that. H2 Kitchen is deliberately simple:
+
+- **Customers never register or log in** — they scan, order anonymously, and track by an order code.
+- **Payments are just a bank transfer** — a pre‑filled VietQR is generated per order and marked *paid* automatically when the money lands (via a [SePay](https://sepay.vn) webhook). No payment gateway, no fees.
+- **Admins get a phone push** for every new order through a Discord webhook — no mobile app to build.
+- **Runs on free tiers** — MongoDB Atlas M0, Render, Vercel, Cloudinary.
+
+> The stack favours **simple, reliable, easy to maintain** over scaling for large traffic.
+
+## 🎯 Features
+
+**Customers (no account needed)**
+- Browse the menu (food & drink) with live stock and out‑of‑stock badges.
+- Customize noodle toppings **with quantities** (e.g. ×2 beef balls, ×1 fish cake) and per‑item notes.
+- Cart, checkout, and order tracking by code (saved in `localStorage`) — self‑cancel while pending, quick re‑order.
+- Pay by **VietQR** (amount + order code pre‑filled) or cash at the counter.
+
+**Admins**
+- JWT login; self‑service password change.
+- **Order queue** — filter by status, live polling, advance status, mark paid, cancel (auto‑restock).
+- **Kitchen open/close** toggle — closing blocks *food* orders only; drinks stay available.
+- **Menu management** — full CRUD, per‑item toppings, inventory, visibility, Cloudinary image upload.
+- **Ad / promo manager** — banners on the landing page + a welcome popup, admin‑controlled. Supports **images, video, and multi‑image carousels** at any aspect ratio (16:9, 3:4, 1:1, 9:16, …), each with a click‑through link. Nothing shows until you add and enable an ad.
+
+**Payments & notifications**
+- **VietQR** generation via `img.vietqr.io` (no SDK).
+- **SePay bank webhook** auto‑confirms transfers → order flips to *paid*; manual "mark paid" remains a fallback.
+- **Discord webhooks** for new orders and for payment confirmations (best‑effort — a failed webhook never breaks checkout).
+
+**Landing page**
+- 3D hero (React Three Fiber + Framer Motion), lazy‑loaded so the heavy 3D chunk stays off every other route; mobile / reduced‑motion tuned with an error‑boundary fallback.
+
+## 🧱 Architecture
+
+```
+        ┌─────────────┐      REST / JSON      ┌──────────────┐
+        │  React SPA  │ ◄──────────────────►  │   FastAPI    │
+        │   (Vite)    │                       │   backend    │
+        └─────────────┘                       └──────┬───────┘
+                                                     │
+        ┌───────────────┬───────────────┬────────────┼───────────────┐
+        ▼               ▼               ▼            ▼               ▼
+   MongoDB Atlas    Cloudinary      Discord      VietQR img     SePay webhook
+   (data store)   (images/video/  (order & paid   (payment QR)  (auto‑confirm
+                   ad media)        alerts)                       transfers)
+```
+
+- Frontend is a single React app: `/` landing, `/order` customer menu (no login), `/admin/*` (JWT).
+- Backend exposes REST endpoints; JWT is required only for `/admin/*`. The SePay webhook is protected by an API key.
+- No WebSockets — admins/customers use lightweight polling.
+
+## 🛠️ Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19 + Vite + TypeScript + Tailwind CSS v4 |
+| 3D / motion | React Three Fiber (`@react-three/fiber` + `drei`) + Framer Motion |
+| Fonts | Be Vietnam Pro (body) + Dela Gothic One (display) — self‑hosted via `@fontsource` |
+| Backend | FastAPI + Motor (async MongoDB) |
+| Database | MongoDB (Atlas M0 free tier, or self‑hosted) |
+| Auth | JWT (admin only) |
+| Media | Cloudinary |
+| Payments | VietQR + SePay auto‑confirm webhook |
+| Notifications | Discord webhooks |
+| Hosting | Vercel (frontend) · Render (backend) |
+
+## 📸 Screenshots
+
+> _Add your own screenshots/GIFs here._
+
+| Landing | Customer menu | Admin orders |
+|---|---|---|
+| _`docs/landing.png`_ | _`docs/menu.png`_ | _`docs/admin.png`_ |
+
+## 🚀 Getting started
+
+### Prerequisites
+
+- **Python 3.11+**
+- **Node.js 18+** and npm
+- **MongoDB** — local, [Atlas](https://www.mongodb.com/atlas) (free M0), or set `USE_MOCK_DB=true` to run against an in‑memory mock (dev only; data is not persisted).
+
+### 1. Clone
+
+```bash
+git clone https://github.com/<your-username>/h2-kitchen.git
+cd h2-kitchen
+```
+
+### 2. Backend (FastAPI)
 
 ```bash
 cd backend
 
-# 1. Create & activate a virtual environment
+# create & activate a virtual environment
 python -m venv .venv
-# Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-# macOS / Linux:
-source .venv/bin/activate
+# Windows (PowerShell):  .venv\Scripts\Activate.ps1
+# macOS / Linux:         source .venv/bin/activate
 
-# 2. Install dependencies
+# install dependencies
 pip install -r requirements.txt
 
-# 3. Configure environment
-cp .env.example .env        # then edit values (Windows: copy .env.example .env)
+# configure environment
+cp .env.example .env          # Windows: copy .env.example .env
+#   then edit values (at minimum MONGODB_URI + JWT_SECRET)
 
-# 4. (Optional) seed the 3 admin accounts manually
-python -m app.seed
-#    Not required if SEED_ON_STARTUP=true — the app seeds them on boot.
-
-# 5. Run the API
-uvicorn app.main:app --reload
+# run the API (invoke uvicorn via python -m for a stable launcher)
+python -m uvicorn app.main:app --reload
 ```
 
-- API: <http://127.0.0.1:8000>
-- Interactive docs (Swagger): <http://127.0.0.1:8000/docs>
-- Health check: <http://127.0.0.1:8000/health>
+- API → <http://127.0.0.1:8000>
+- Swagger docs → <http://127.0.0.1:8000/docs>
+- Health → <http://127.0.0.1:8000/health>
 
-### Seed admin accounts
+With `SEED_ON_STARTUP=true`, the app seeds the demo admin accounts and menu on first boot. You can also seed manually: `python -m app.seed`.
 
-| Username     | Password   | Name           |
-|--------------|------------|----------------|
-| `admin`      | `xxx` | Quản lý chính  |
-| `baristahai` | `xxx`   | Hải quầy bar   |
-| `beptruong`  | `xxx`   | Bếp trưởng     |
-
-> ⚠️ These are development defaults. Change the passwords (in `app/seed.py`) before
-> deploying, and always set a strong `JWT_SECRET`.
-
-### Environment variables (`backend/.env`)
-
-| Variable              | Purpose                                                        |
-|-----------------------|----------------------------------------------------------------|
-| `MONGODB_URI`         | MongoDB connection string                                      |
-| `MONGODB_DB_NAME`     | Database name (default `h2_kitchen`)                           |
-| `JWT_SECRET`          | Secret for signing JWTs — **set a long random value**          |
-| `JWT_ALGORITHM`       | JWT algorithm (default `HS256`)                                |
-| `JWT_EXPIRE_MINUTES`  | Token lifetime in minutes (default `1440`)                     |
-| `DISCORD_WEBHOOK_URL` | New-order notifications (wired up in roadmap step 6)           |
-| `BANK_ACCOUNT_INFO`   | VietQR receiving account: `<bank_bin>\|<account_no>\|<ACCOUNT NAME>` (e.g. `970422\|0123456789\|NGUYEN VAN A`) |
-| `CLOUDINARY_URL`      | Product image hosting (admin menu management)                  |
-| `SEPAY_WEBHOOK_API_KEY` | Auto-confirm transfers via SePay webhook (same value in SePay dashboard) |
-| `CORS_ORIGINS`        | Comma-separated allowed origins (add your Vercel domain)       |
-| `USE_MOCK_DB`         | `true` = in-memory MongoDB for dev (no install). Keep `false` in prod. |
-| `SEED_ON_STARTUP`     | `true` = create missing admin accounts on boot                 |
-
-### API endpoints (so far)
-
-| Method | Path                              | Auth       | Description                              |
-|--------|-----------------------------------|------------|------------------------------------------|
-| POST   | `/auth/login`                     | public     | Admin login → returns a JWT              |
-| GET    | `/auth/me`                        | Bearer JWT | Current admin from the token             |
-| GET    | `/health`                         | public     | Liveness check                           |
-| GET    | `/menu`                           | public     | Customer menu (visible items; `?category=food\|drink`) |
-| GET    | `/admin/menu-items`               | admin      | All items, including hidden ones         |
-| POST   | `/admin/menu-items`               | admin      | Create a product                         |
-| GET    | `/admin/menu-items/{id}`          | admin      | Get one product                          |
-| PATCH  | `/admin/menu-items/{id}`          | admin      | Update (price, quantity, toppings, …)    |
-| DELETE | `/admin/menu-items/{id}`          | admin      | Delete a product                         |
-| POST   | `/admin/menu-items/{id}/image`    | admin      | Upload product image to Cloudinary       |
-| POST   | `/cart/checkout`                  | public     | Create an order (decrements stock) → `order_code` |
-| GET    | `/orders/{order_code}`            | public     | Look up an order by its code             |
-| PATCH  | `/orders/{order_code}/cancel`     | public     | Customer self-cancel (only while pending; restocks) |
-| GET    | `/kitchen-status`                 | public     | Is the kitchen open?                     |
-| GET    | `/admin/orders`                   | admin      | List orders (newest first; `?status=`)   |
-| PATCH  | `/admin/orders/{id}`              | admin      | Update status / payment (cancel restocks) |
-| GET    | `/admin/kitchen-status`           | admin      | Kitchen status (with who/when)           |
-| PATCH  | `/admin/kitchen-status`           | admin      | Open/close the kitchen                    |
-| POST   | `/webhooks/sepay`                 | api key    | SePay bank webhook — auto-confirm payment |
-
-> Image upload needs Cloudinary configured (`CLOUDINARY_URL` or the 3 parts in
-> `.env`); without it the endpoint returns 503. You can still set `image_url`
-> directly via the create/update endpoints.
-
----
-
-## Frontend (React + Vite + Tailwind)
+### 3. Frontend (React + Vite)
 
 ```bash
 cd frontend
-
-# 1. Install dependencies
 npm install
-
-# 2. Configure environment
-cp .env.example .env        # VITE_API_URL -> backend URL (Windows: copy .env.example .env)
-
-# 3. Run the dev server
+cp .env.example .env          # set VITE_API_URL to your backend URL
 npm run dev
 ```
 
-- App: <http://localhost:5173>
-- Build for production: `npm run build`  (output in `frontend/dist/`)
+- App → <http://localhost:5173>
+- Production build → `npm run build` (output in `frontend/dist/`)
 
-### Routes
+### Demo admin accounts
 
-| Route         | Access      | Description                                          |
-|---------------|-------------|------------------------------------------------------|
-| `/`           | public      | Landing (3D hero + CTA → `/order`)                   |
-| `/order`      | public      | Customer menu (food & drink, out-of-stock badges)    |
-| `/login`      | public      | Admin login                                          |
-| `/admin`      | admin (JWT) | Admin dashboard — greeting, kitchen toggle, links    |
-| `/admin/menu` | admin (JWT) | Menu management (create/edit/delete, toppings, stock, image) |
-| `/admin/orders` | admin (JWT) | Order queue — filter, update status, mark paid, kitchen toggle |
+| Username | Name |
+|---|---|
+| `admin` | Quản lý chính |
+| `baristahai` | Hải quầy bar |
+| `beptruong` | Bếp trưởng |
 
-The JWT is stored in `localStorage`. On load, the app restores the session from the
-token via `/auth/me`; visiting `/admin` unauthenticated redirects to `/login`.
+> ⚠️ **Default passwords live in [`backend/app/seed.py`](backend/app/seed.py) and are for local dev only.** Change them (and set a strong `JWT_SECRET`) before deploying — the admin panel has a "Đổi mật khẩu" (change password) action.
 
-### Environment variables (`frontend/.env`)
+## ⚙️ Configuration
 
-| Variable       | Purpose                                              |
-|----------------|------------------------------------------------------|
-| `VITE_API_URL` | Base URL of the backend (e.g. Render URL in prod)    |
+### Backend (`backend/.env`)
 
----
+| Variable | Purpose |
+|---|---|
+| `MONGODB_URI` | MongoDB connection string |
+| `MONGODB_DB_NAME` | Database name (default `h2_kitchen`) |
+| `JWT_SECRET` | **Set a long random value.** `python -c "import secrets;print(secrets.token_urlsafe(48))"` |
+| `JWT_ALGORITHM` / `JWT_EXPIRE_MINUTES` | JWT algorithm (`HS256`) / token lifetime (`1440`) |
+| `DISCORD_WEBHOOK_URL` | New‑order & payment notifications (leave empty to disable) |
+| `BANK_ACCOUNT_INFO` | VietQR receiving account: `<bank_bin>\|<account_no>\|<ACCOUNT NAME>` (e.g. `970422\|0123456789\|NGUYEN VAN A`) |
+| `SEPAY_WEBHOOK_API_KEY` | Auto‑confirm transfers via SePay (same value in the SePay dashboard) |
+| `CLOUDINARY_URL` | Media hosting for product & ad images/video |
+| `CORS_ORIGINS` | Comma‑separated allowed origins (add your frontend domain) |
+| `USE_MOCK_DB` | `true` = in‑memory MongoDB for dev; keep `false` in prod |
+| `SEED_ON_STARTUP` | `true` = seed missing admins + menu on boot |
 
-## Verifying the auth flow end-to-end
+### Frontend (`frontend/.env`)
 
-1. Start the backend (`uvicorn app.main:app --reload`) and frontend (`npm run dev`).
-2. Open <http://localhost:5173/login> and log in with `admin` / `admin123`.
-3. You're redirected to `/admin`, which shows **"Xin chào, Quản lý chính"** —
-   proving login → JWT → protected `/auth/me` request works.
-4. Click **Đăng xuất** to clear the token and return to login.
+| Variable | Purpose |
+|---|---|
+| `VITE_API_URL` | Base URL of the backend (e.g. your Render URL in prod) |
 
-## External services setup
+<details>
+<summary><b>External services — quick setup (Atlas · SePay · Discord · Cloudinary)</b></summary>
 
-### MongoDB (switch from the in-memory mock to a real server)
+**MongoDB Atlas (free M0)** — create an M0 cluster, add a database user, allow network access `0.0.0.0/0` (dev), copy the SRV URI into `MONGODB_URI`, set `USE_MOCK_DB=false`. URL‑encode special characters in the password.
 
-Local dev defaults to `USE_MOCK_DB=true` (data resets on restart). To use a real
-database (MongoDB Atlas free tier recommended):
+**SePay auto‑confirm** — register at [sepay.vn](https://sepay.vn), connect your receiving bank account, add a webhook to `https://<backend>/webhooks/sepay` with header `Authorization: Apikey <KEY>` for incoming transfers, and set `SEPAY_WEBHOOK_API_KEY=<KEY>`. The VietQR embeds the order code in the transfer content, so customers just scan and pay. For local testing, tunnel with `ngrok http 8000`.
 
-1. Create an account: <https://www.mongodb.com/cloud/atlas/register>
-2. **Create** → **M0 (Free)** cluster, pick a nearby region (e.g. Singapore).
-3. **Security → Database Access** → add a database user (username + password).
-4. **Security → Network Access** → add IP `0.0.0.0/0` (dev; restrict later).
-5. **Connect → Drivers** → copy the connection string:
-   `mongodb+srv://<user>:<password>@cluster0.xxxx.mongodb.net/?retryWrites=true&w=majority`
-6. In `backend/.env`:
-   - `MONGODB_URI=` the string above (replace `<password>`; URL-encode special chars)
-   - `MONGODB_DB_NAME=h2_kitchen`
-   - `USE_MOCK_DB=false`
-7. Restart the backend. With `SEED_ON_STARTUP=true` it creates the 3 admins +
-   seed menu in Atlas on first boot.
+**Discord notifications** — create a channel webhook (Channel settings → Integrations → Webhooks), set `DISCORD_WEBHOOK_URL`, and install Discord on the admins' phones for real push notifications.
 
-> Self-hosted alternative: install MongoDB Community and set
-> `MONGODB_URI=mongodb://localhost:27017`, `USE_MOCK_DB=false`.
+**Cloudinary** — grab your `CLOUDINARY_URL` from the dashboard. Without it, media‑upload endpoints return `503`; you can still set image URLs directly.
 
-### Auto-confirm payments (SePay webhook)
+</details>
 
-So orders flip to **paid** automatically when the bank transfer arrives:
+## 📂 Project structure
 
-1. Register at <https://sepay.vn> (free for personal use) and connect your
-   receiving bank account (MB Bank supported).
-2. SePay dashboard → **Webhooks** → add a webhook:
-   - **URL:** `https://<your-backend-domain>/webhooks/sepay`
-     (the Render URL after deploy; for local testing use an `ngrok http 8000` URL)
-   - **Auth:** API Key → header `Authorization: Apikey <KEY>`
-   - **Events:** incoming transfers only
-3. Set `SEPAY_WEBHOOK_API_KEY=<KEY>` in `backend/.env` (same `<KEY>`), restart.
-4. Test: transfer a small amount with the order code (e.g. `H2ABC123`) in the
-   content → the order auto-marks paid. The VietQR already fills this content in,
-   so real customers just scan and pay.
+```
+h2-kitchen/
+├── backend/                  FastAPI + Motor (MongoDB) + JWT
+│   ├── app/
+│   │   ├── main.py           app entrypoint & router registration
+│   │   ├── routers/          auth, menu, orders, kitchen, ads, webhooks
+│   │   ├── models/           Pydantic schemas
+│   │   ├── services/         cloudinary, vietqr, notifications, kitchen
+│   │   ├── core/             config & security
+│   │   └── seed.py           demo admins + menu
+│   └── requirements.txt
+├── frontend/                 React (Vite) + TypeScript + Tailwind
+│   └── src/
+│       ├── pages/            Landing, Customer, Cart, Order, Admin*
+│       ├── components/       AdCarousel, AdPopup, ProductModal, …
+│       ├── context/          Cart & Auth providers
+│       └── api/              typed REST client
+└── CLAUDE.md                 detailed design spec (scope, data model)
+```
 
-> The webhook needs the backend reachable from the internet (deploy in step 8, or
-> tunnel with ngrok for local testing). The admin **"Đã thu tiền"** button remains
-> as a manual fallback if SePay isn't configured.
+## 🔌 API reference
 
-### New-order notifications (Discord)
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/auth/login` | public | Admin login → JWT |
+| GET | `/auth/me` | admin | Current admin |
+| PATCH | `/admin/me/password` | admin | Change own password |
+| GET | `/menu` | public | Customer menu (`?category=food\|drink`) |
+| GET/POST | `/admin/menu-items` | admin | List (incl. hidden) / create product |
+| PATCH/DELETE | `/admin/menu-items/{id}` | admin | Update / delete product |
+| POST | `/admin/menu-items/{id}/image` | admin | Upload product image (Cloudinary) |
+| POST | `/cart/checkout` | public | Create order (decrements stock) → `order_code` |
+| GET | `/orders/{order_code}` | public | Look up order by code |
+| PATCH | `/orders/{order_code}/cancel` | public | Self‑cancel while pending (restocks) |
+| GET/PATCH | `/admin/orders` · `/admin/orders/{id}` | admin | List / update status & payment |
+| GET/PATCH | `/kitchen-status` · `/admin/kitchen-status` | mixed | Kitchen open/close |
+| GET | `/ads` | public | Active ads (`?placement=landing\|popup`) |
+| GET/POST | `/admin/ads` | admin | List all / create ad |
+| PATCH/DELETE | `/admin/ads/{id}` | admin | Update / delete ad |
+| POST | `/admin/ads/upload` | admin | Upload ad media (image/video) |
+| POST | `/webhooks/sepay` | api key | SePay bank webhook — auto‑confirm payment |
 
-Push a message to your phone whenever an order comes in — no app to build:
+Full request/response models are in the Swagger docs (`/docs`).
 
-1. Create a free Discord server (just for the shop) and a channel, e.g. `#đơn-mới`.
-2. **Channel settings → Integrations → Webhooks → New Webhook** → **Copy Webhook URL**.
-3. Set `DISCORD_WEBHOOK_URL=<that URL>` in `backend/.env`, restart the backend.
-4. Install Discord on the admins' phones, join the server, enable notifications for
-   the channel → real push notifications on the lock screen, near-instant.
+## ☁️ Deployment
 
-> Leave `DISCORD_WEBHOOK_URL` empty to disable. Notifications are best-effort —
-> a webhook failure is logged and never affects the order.
+Included config: [`render.yaml`](render.yaml) (backend blueprint), [`frontend/vercel.json`](frontend/vercel.json) (SPA rewrite), and a GitHub Actions [CI/CD workflow](.github/workflows/ci-cd.yml).
 
-## Deployment (Render + Vercel)
+1. **Database** — MongoDB Atlas; allow network access `0.0.0.0/0` (Render's free tier has no static outbound IP).
+2. **Backend → Render** — New → Blueprint → connect the repo (reads `render.yaml`). Set the env vars above. Note the URL.
+3. **Frontend → Vercel** — import the repo with **Root Directory = `frontend`**; set `VITE_API_URL` to the Render URL.
+4. **Wire it up** — add the Vercel domain to `CORS_ORIGINS`, point the SePay webhook to `https://<render-url>/webhooks/sepay`, then log in and change the default admin passwords.
 
-Config files are included: [`render.yaml`](render.yaml) (backend blueprint),
-[`frontend/vercel.json`](frontend/vercel.json) (SPA rewrite), and
-[`backend/.python-version`](backend/.python-version).
+> Render's free tier sleeps after ~15 min idle → first request cold‑starts (~30s). Fine for internal use.
 
-### 1. Database — MongoDB Atlas
-Already set up (see *External services setup*). **Network Access → allow `0.0.0.0/0`**
-(Render's free tier has no static outbound IP).
+## 🗺️ Roadmap
 
-### 1b. GitHub Actions CI/CD
-The repository now includes [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml).
+- [x] Menu CRUD + public menu
+- [x] Cart, checkout & order tracking (no login)
+- [x] Admin order queue + kitchen open/close
+- [x] VietQR + SePay auto‑confirm
+- [x] Discord notifications (new order + paid)
+- [x] 3D landing + indigo‑mono theme + admin password change
+- [x] Ad / promo manager (banners + popup, image/video/carousel)
+- [x] Per‑topping quantities
+- [ ] Admin statistics dashboard (revenue, best‑sellers)
+- [ ] Low‑stock alerts & automatic operating hours
 
-- On every pull request to `main`, it builds the frontend and backend.
-- On push to `main`, it also triggers optional deploy hooks if the secrets are set.
+## 🤝 Contributing
 
-Required GitHub repository secrets:
+Contributions are welcome!
 
-- `VERCEL_DEPLOY_HOOK_URL` for the frontend deploy hook.
-- `RENDER_DEPLOY_HOOK_URL` for the backend deploy hook.
+1. Fork the repo and create a branch: `git checkout -b feat/my-feature`.
+2. Make your change. Keep the existing style (TypeScript strict; Python type hints; small, focused modules).
+3. Sanity‑check locally:
+   - Frontend: `npm run build` (runs typecheck + bundle).
+   - Backend: run the app and hit the affected endpoints (`/docs` is handy). `USE_MOCK_DB=true` needs no database.
+4. Open a pull request describing the change and how you tested it.
 
-If either secret is missing, the corresponding deploy job is skipped safely.
+Please open an issue first for larger features so we can align on the approach.
 
-### 2. Backend — Render
-1. Push the repo to GitHub.
-2. Render → **New → Blueprint** → connect the repo. It reads `render.yaml`
-   (`rootDir: backend`, build `pip install -r requirements.txt`, start
-   `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, health check `/health`).
-3. Fill the prompted secrets: `MONGODB_URI`, `JWT_SECRET` (a long random string),
-   `CORS_ORIGINS` (your Vercel URL, e.g. `https://h2-kitchen.vercel.app`),
-   `BANK_ACCOUNT_INFO`, `SEPAY_WEBHOOK_API_KEY`, `DISCORD_WEBHOOK_URL`, `CLOUDINARY_URL`.
-4. Deploy → note the URL, e.g. `https://h2-kitchen-api.onrender.com`.
+## 📄 License
 
-> Free tier sleeps after ~15 min idle → first request cold-starts (~30s). Fine for
-> internal use. `SEED_ON_STARTUP=true` creates the 3 admins on first boot — **change
-> their passwords** immediately via the admin panel (Đổi mật khẩu).
+Released under the **MIT License**. See [`LICENSE`](LICENSE).
 
-### 3. Frontend — Vercel
-1. Vercel → **New Project** → import the repo, set **Root Directory = `frontend`**
-   (Vite preset auto-detected; `vercel.json` handles SPA routing + build).
-2. Env var: `VITE_API_URL = https://h2-kitchen-api.onrender.com` (your Render URL).
-3. Deploy → note the URL (e.g. `https://h2-kitchen.vercel.app`).
+## 🙏 Acknowledgements
 
-### 4. Wire the pieces
-- Add the Vercel URL to `CORS_ORIGINS` on Render (redeploy).
-- Point the **SePay** webhook to `https://<render-url>/webhooks/sepay`.
-- (Discord/Cloudinary/VietQR need no URL change.)
-- Open the Vercel URL, log in at `/login`, change the default admin passwords.
+- Payment QR by [VietQR](https://vietqr.io) · auto‑confirmation by [SePay](https://sepay.vn)
+- Media hosting by [Cloudinary](https://cloudinary.com) · notifications via [Discord](https://discord.com)
+- 3D via [React Three Fiber](https://docs.pmnd.rs/react-three-fiber) · fonts from [Fontsource](https://fontsource.org)
+- Built by [Crazy Builders Lab](https://www.instagram.com/crazybuilders.lab)

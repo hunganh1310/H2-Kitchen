@@ -121,6 +121,20 @@ async def send_new_order_notification(order: dict) -> None:
         logger.warning("Discord notification failed: %s", exc)
 
 
+async def send_test_notification() -> None:
+    """Send a test Discord message. Unlike the fire-and-forget senders above, this
+    RAISES on failure so a diagnostics endpoint can report the real error."""
+    url = settings.discord_webhook_url
+    if not url:
+        raise RuntimeError("DISCORD_WEBHOOK_URL is empty in this environment")
+    payload = {
+        "username": "H2 Kitchen",
+        "content": "🔔 **Test webhook** — nếu bạn thấy tin nhắn này, Discord đã kết nối "
+        "thành công với H2 Kitchen.",
+    }
+    await run_in_threadpool(_post, url, payload)
+
+
 async def send_payment_confirmed_notification(order: dict) -> None:
     """Send a 'payment received' Discord message (called from the SePay webhook)."""
     url = settings.discord_webhook_url

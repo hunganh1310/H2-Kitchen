@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { changePassword } from '../api/auth'
+import { testDiscord } from '../api/diagnostics'
 import { ApiError } from '../api/client'
 import KitchenToggle from '../components/KitchenToggle'
 import { useAuth } from '../context/AuthContext'
@@ -9,10 +10,28 @@ export default function AdminDashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [pwOpen, setPwOpen] = useState(false)
+  const [testingDiscord, setTestingDiscord] = useState(false)
+  const [discordResult, setDiscordResult] = useState<{ ok: boolean; text: string } | null>(null)
 
   function handleLogout() {
     logout()
     navigate('/login', { replace: true })
+  }
+
+  async function handleTestDiscord() {
+    setTestingDiscord(true)
+    setDiscordResult(null)
+    try {
+      const res = await testDiscord()
+      setDiscordResult({ ok: true, text: res.message })
+    } catch (err) {
+      setDiscordResult({
+        ok: false,
+        text: err instanceof ApiError ? err.message : 'Gửi thất bại.',
+      })
+    } finally {
+      setTestingDiscord(false)
+    }
   }
 
   return (
@@ -25,6 +44,14 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-3">
             <KitchenToggle />
+            <button
+              type="button"
+              onClick={handleTestDiscord}
+              disabled={testingDiscord}
+              className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 transition hover:border-indigo-400 hover:text-indigo-400 disabled:opacity-50"
+            >
+              {testingDiscord ? 'Đang gửi…' : 'Kiểm tra Discord'}
+            </button>
             <button
               type="button"
               onClick={() => setPwOpen(true)}
@@ -50,6 +77,29 @@ export default function AdminDashboard() {
           <span className="font-mono text-indigo-300">{user?.username}</span> · quyền{' '}
           <span className="font-mono text-indigo-300">{user?.role}</span>
         </p>
+
+        {discordResult && (
+          <div
+            className={`mt-4 flex items-start justify-between gap-3 rounded-lg px-4 py-3 text-sm ${
+              discordResult.ok
+                ? 'bg-green-500/10 text-green-300'
+                : 'bg-red-950/60 text-red-300'
+            }`}
+          >
+            <span>
+              {discordResult.ok ? '✓ ' : '✗ '}
+              {discordResult.text}
+            </span>
+            <button
+              type="button"
+              onClick={() => setDiscordResult(null)}
+              className="shrink-0 text-neutral-500 hover:text-neutral-300"
+              aria-label="Đóng"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {([

@@ -14,6 +14,7 @@ from .db import close_mongo_connection, connect_to_mongo, get_db
 logger = logging.getLogger("h2")
 from .routers import (
     admin_account,
+    admin_diagnostics,
     admin_menu,
     admin_orders,
     ads,
@@ -59,6 +60,8 @@ app.add_middleware(
 # Auth routes (admin login + /auth/me) + self-service account.
 app.include_router(auth.router)
 app.include_router(admin_account.router)
+# Admin diagnostics (test Discord webhook, etc.).
+app.include_router(admin_diagnostics.router)
 # Menu: public listing (customers) + admin CRUD.
 app.include_router(menu.router)
 app.include_router(admin_menu.router)
@@ -77,4 +80,11 @@ app.include_router(webhooks.router)
 
 @app.get("/health", tags=["health"])
 async def health():
-    return {"status": "ok", "service": "H2 Kitchen API", "mock_db": settings.use_mock_db}
+    # `discord_configured` lets you verify (without logging in) whether the
+    # DISCORD_WEBHOOK_URL env var actually reached this running process.
+    return {
+        "status": "ok",
+        "service": "H2 Kitchen API",
+        "mock_db": settings.use_mock_db,
+        "discord_configured": bool(settings.discord_webhook_url),
+    }
