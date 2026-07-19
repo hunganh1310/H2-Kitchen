@@ -178,10 +178,7 @@ export default function AdminRental() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Cho thuê đồ</h1>
-            <p className="mt-1 text-sm text-neutral-500">
-              Link cho khách thuê: <span className="font-mono text-indigo-300">/renting</span>
-            </p>
+            <h1 className="text-2xl font-bold">Quản lý đồ thuê</h1>
           </div>
           <button
             onClick={openCreate}
