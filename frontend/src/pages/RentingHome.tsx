@@ -50,10 +50,7 @@ export default function RentingHome() {
 
       <main className="mx-auto max-w-3xl px-4 py-6">
         <div className="mb-5">
-          <h1 className="text-2xl font-bold">Cho thuê thiết bị</h1>
-          <p className="mt-1 text-sm text-neutral-400">
-            Thuê đàn, tai nghe IEM và thiết bị cho ca tập của bạn.
-          </p>
+          <h1 className="text-2xl font-bold">Thuê thiết bị phòng tập</h1>
         </div>
 
         {loading && <p className="text-neutral-500">Đang tải…</p>}
