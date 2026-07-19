@@ -40,7 +40,7 @@ export default function RentingHome() {
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <span className="text-xl font-display tracking-tight">
             H<span className="text-indigo-400">2</span> Kitchen
-            <span className="ml-2 align-middle text-xs font-medium text-neutral-500">THUÊ ĐỒ</span>
+            <span className="ml-2 align-middle font-sans text-xs font-medium text-neutral-500">THUÊ ĐỒ</span>
           </span>
           <Link to="/orders" className="text-sm text-neutral-400 hover:text-indigo-400">
             Đơn của tôi
