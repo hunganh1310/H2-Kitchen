@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   adminListMenu,
@@ -6,39 +6,33 @@ import {
   deleteMenuItem,
   updateMenuItem,
   uploadMenuImage,
-  FNB_CATEGORY_LABEL,
-  type FnbCategory,
   type MenuItem,
   type MenuItemInput,
-  type Topping,
 } from '../api/menu'
-import { productIcon } from '../components/MenuCard'
 import { formatVnd } from '../lib/format'
 import { useAuth } from '../context/AuthContext'
 
 interface FormState {
   name: string
-  category: FnbCategory
+  category: string
   price: string
   quantity: string
   description: string
   image_url: string
   is_available: boolean
-  toppings: Topping[]
 }
 
 const EMPTY_FORM: FormState = {
   name: '',
-  category: 'prepared',
+  category: '',
   price: '',
   quantity: '0',
   description: '',
   image_url: '',
   is_available: true,
-  toppings: [],
 }
 
-export default function AdminMenu() {
+export default function AdminRental() {
   const { logout } = useAuth()
   const [items, setItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,10 +46,10 @@ export default function AdminMenu() {
   async function refresh() {
     setLoading(true)
     try {
-      setItems(await adminListMenu('fnb'))
+      setItems(await adminListMenu('rental'))
       setError(null)
     } catch {
-      setError('Không tải được danh sách sản phẩm.')
+      setError('Không tải được danh sách đồ thuê.')
     } finally {
       setLoading(false)
     }
@@ -64,6 +58,12 @@ export default function AdminMenu() {
   useEffect(() => {
     refresh()
   }, [])
+
+  // Existing groups, for the category suggestion datalist.
+  const categories = useMemo(
+    () => [...new Set(items.map((i) => i.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi')),
+    [items],
+  )
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -74,13 +74,12 @@ export default function AdminMenu() {
   function openEdit(item: MenuItem) {
     setForm({
       name: item.name,
-      category: (item.category as FnbCategory) ?? 'prepared',
+      category: item.category,
       price: String(item.price),
       quantity: String(item.quantity),
       description: item.description,
       image_url: item.image_url ?? '',
       is_available: item.is_available,
-      toppings: item.toppings.map((t) => ({ ...t })),
     })
     setEditingId(item.id)
     setFormError(null)
@@ -98,20 +97,20 @@ export default function AdminMenu() {
     const price = Number(form.price)
     const quantity = Number(form.quantity)
     if (!form.name.trim()) return setFormError('Tên sản phẩm không được để trống.')
+    if (!form.category.trim()) return setFormError('Vui lòng nhập nhóm phân loại.')
     if (!Number.isFinite(price) || price < 0) return setFormError('Giá không hợp lệ.')
     if (!Number.isInteger(quantity) || quantity < 0) return setFormError('Số lượng không hợp lệ.')
-    if (form.toppings.some((t) => !t.name.trim())) return setFormError('Topping phải có tên.')
 
     const payload: MenuItemInput = {
       name: form.name.trim(),
-      kind: 'fnb',
-      category: form.category,
+      kind: 'rental',
+      category: form.category.trim(),
       price,
       quantity,
       description: form.description.trim(),
       image_url: form.image_url.trim() || null,
       is_available: form.is_available,
-      toppings: form.toppings.map((t) => ({ name: t.name.trim(), price: Number(t.price) || 0 })),
+      toppings: [],
     }
 
     setSaving(true)
@@ -152,20 +151,6 @@ export default function AdminMenu() {
     }
   }
 
-  // --- toppings editor helpers ---
-  function addTopping() {
-    setForm((f) => ({ ...f, toppings: [...f.toppings, { name: '', price: 0 }] }))
-  }
-  function updateTopping(i: number, patch: Partial<Topping>) {
-    setForm((f) => ({
-      ...f,
-      toppings: f.toppings.map((t, idx) => (idx === i ? { ...t, ...patch } : t)),
-    }))
-  }
-  function removeTopping(i: number) {
-    setForm((f) => ({ ...f, toppings: f.toppings.filter((_, idx) => idx !== i) }))
-  }
-
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
       <header className="flex items-center justify-between border-b border-neutral-800 px-6 py-4">
@@ -179,7 +164,7 @@ export default function AdminMenu() {
               Dashboard
             </Link>
             <span className="mx-2 text-neutral-700">/</span>
-            <span className="text-neutral-200">Quản lý menu</span>
+            <span className="text-neutral-200">Cho thuê đồ</span>
           </nav>
         </div>
         <button
@@ -192,12 +177,17 @@ export default function AdminMenu() {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Quản lý menu</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Cho thuê đồ</h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              Link cho khách thuê: <span className="font-mono text-indigo-300">/renting</span>
+            </p>
+          </div>
           <button
             onClick={openCreate}
             className="rounded-lg bg-indigo-400 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-indigo-300"
           >
-            + Thêm sản phẩm
+            + Thêm đồ thuê
           </button>
         </div>
 
@@ -210,11 +200,10 @@ export default function AdminMenu() {
               <thead className="bg-neutral-900 text-left text-neutral-400">
                 <tr>
                   <th className="px-4 py-3 font-medium">Sản phẩm</th>
-                  <th className="px-4 py-3 font-medium">Loại</th>
-                  <th className="px-4 py-3 font-medium">Giá</th>
+                  <th className="px-4 py-3 font-medium">Nhóm</th>
+                  <th className="px-4 py-3 font-medium">Giá thuê</th>
                   <th className="px-4 py-3 font-medium">Tồn kho</th>
                   <th className="px-4 py-3 font-medium">Hiển thị</th>
-                  <th className="px-4 py-3 font-medium">Topping</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -225,21 +214,15 @@ export default function AdminMenu() {
                       <div className="flex items-center gap-3">
                         <span className="flex h-9 w-9 items-center justify-center rounded bg-neutral-800 text-lg">
                           {item.image_url ? (
-                            <img
-                              src={item.image_url}
-                              alt=""
-                              className="h-9 w-9 rounded object-cover"
-                            />
+                            <img src={item.image_url} alt="" className="h-9 w-9 rounded object-cover" />
                           ) : (
-                            productIcon(item)
+                            '🎸'
                           )}
                         </span>
                         <span className="font-medium">{item.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-neutral-400">
-                      {FNB_CATEGORY_LABEL[item.category as FnbCategory] ?? item.category}
-                    </td>
+                    <td className="px-4 py-3 text-neutral-400">{item.category}</td>
                     <td className="px-4 py-3 text-indigo-300">{formatVnd(item.price)}</td>
                     <td className="px-4 py-3">
                       <span className={item.quantity === 0 ? 'text-red-400' : 'text-neutral-200'}>
@@ -248,12 +231,11 @@ export default function AdminMenu() {
                     </td>
                     <td className="px-4 py-3">
                       {item.is_available ? (
-                        <span className="text-green-400">Đang bán</span>
+                        <span className="text-green-400">Đang cho thuê</span>
                       ) : (
                         <span className="text-neutral-500">Đã ẩn</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-neutral-400">{item.toppings.length}</td>
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => openEdit(item)}
@@ -272,8 +254,8 @@ export default function AdminMenu() {
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-neutral-500">
-                      Chưa có sản phẩm nào.
+                    <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
+                      Chưa có đồ cho thuê nào.
                     </td>
                   </tr>
                 )}
@@ -292,7 +274,7 @@ export default function AdminMenu() {
             className="h-full w-full max-w-md overflow-y-auto border-l border-neutral-800 bg-neutral-950 p-6"
           >
             <h2 className="mb-5 text-lg font-bold">
-              {editingId ? 'Sửa sản phẩm' : 'Thêm sản phẩm'}
+              {editingId ? 'Sửa đồ thuê' : 'Thêm đồ thuê'}
             </h2>
 
             <div className="space-y-4">
@@ -306,17 +288,21 @@ export default function AdminMenu() {
               </Field>
 
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Danh mục">
-                  <select
+                <Field label="Nhóm phân loại">
+                  <input
                     value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value as FnbCategory })}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    list="rental-categories"
+                    placeholder="VD: Guitar, Bass, IEM"
                     className="input"
-                  >
-                    <option value="prepared">{FNB_CATEGORY_LABEL.prepared}</option>
-                    <option value="bottled">{FNB_CATEGORY_LABEL.bottled}</option>
-                  </select>
+                  />
+                  <datalist id="rental-categories">
+                    {categories.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
                 </Field>
-                <Field label="Giá (VND)">
+                <Field label="Giá thuê (VND)">
                   <input
                     type="number"
                     min={0}
@@ -374,53 +360,8 @@ export default function AdminMenu() {
                   onChange={(e) => setForm({ ...form, is_available: e.target.checked })}
                   className="h-4 w-4 accent-indigo-400"
                 />
-                Hiển thị cho khách (đang bán)
+                Hiển thị cho khách (đang cho thuê)
               </label>
-
-              {/* Toppings */}
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-neutral-400">Topping</span>
-                  <button
-                    type="button"
-                    onClick={addTopping}
-                    className="text-xs text-indigo-400 hover:text-indigo-300"
-                  >
-                    + Thêm topping
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {form.toppings.map((t, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input
-                        value={t.name}
-                        onChange={(e) => updateTopping(i, { name: e.target.value })}
-                        placeholder="Tên"
-                        className="input flex-1"
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        value={t.price}
-                        onChange={(e) => updateTopping(i, { price: Number(e.target.value) })}
-                        placeholder="Giá"
-                        className="input w-24"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeTopping(i)}
-                        className="px-1 text-neutral-500 hover:text-red-400"
-                        aria-label="Xoá topping"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  {form.toppings.length === 0 && (
-                    <p className="text-xs text-neutral-600">Chưa có topping.</p>
-                  )}
-                </div>
-              </div>
 
               {formError && (
                 <p className="rounded-lg bg-red-950/60 px-3 py-2 text-sm text-red-300">

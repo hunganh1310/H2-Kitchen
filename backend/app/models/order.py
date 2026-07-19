@@ -14,6 +14,7 @@ OrderStatus = Literal["pending", "preparing", "done", "cancelled"]
 PaymentStatus = Literal["unpaid", "paid"]
 PaymentMethod = Literal["vietqr", "cash"]
 CancelledBy = Literal["customer", "admin"]
+OrderKind = Literal["fnb", "rental"]
 
 
 # --- Checkout (request) ---------------------------------------------------
@@ -47,6 +48,8 @@ class CheckoutRequest(BaseModel):
     phone: str | None = Field(None, max_length=20)
     items: list[CheckoutItem] = Field(..., min_length=1)
     payment_method: PaymentMethod = "vietqr"
+    # Optional regular-customer discount code (see services/discount.py).
+    discount_code: str | None = Field(None, max_length=32)
 
 
 # --- Order (response) -----------------------------------------------------
@@ -68,6 +71,8 @@ class OrderItemTopping(BaseModel):
 class OrderItemOut(BaseModel):
     menu_item_id: str
     name: str
+    kind: OrderKind = "fnb"
+    category: str | None = None
     qty: int
     toppings: list[OrderItemTopping]
     unit_price: int  # base + toppings, per unit
@@ -88,10 +93,15 @@ class VietQrInfo(BaseModel):
 class OrderOut(BaseModel):
     id: str
     order_code: str
+    kind: OrderKind
     customer_name: str
     room_number: str
     phone: str | None
     items: list[OrderItemOut]
+    # subtotal = sum of line totals before discount; total = after discount.
+    subtotal: int
+    discount_code: str | None = None
+    discount_amount: int = 0
     total: int
     status: OrderStatus
     payment_status: PaymentStatus
@@ -110,6 +120,8 @@ def to_order_out(doc: dict) -> OrderOut:
         OrderItemOut(
             menu_item_id=i["menu_item_id"],
             name=i["name"],
+            kind=i.get("kind", "fnb"),
+            category=i.get("category"),
             qty=i["qty"],
             toppings=[
                 OrderItemTopping(
@@ -124,6 +136,7 @@ def to_order_out(doc: dict) -> OrderOut:
         for i in doc.get("items", [])
     ]
     transfer_amount = int(doc.get("transfer_amount", doc["total"]))
+    total = int(doc["total"])
 
     vietqr = None
     if doc.get("payment_method") == "vietqr":
@@ -133,11 +146,15 @@ def to_order_out(doc: dict) -> OrderOut:
     return OrderOut(
         id=str(doc["_id"]),
         order_code=doc["order_code"],
+        kind=doc.get("kind", "fnb"),
         customer_name=doc["customer_name"],
         room_number=doc["room_number"],
         phone=doc.get("phone"),
         items=items,
-        total=int(doc["total"]),
+        subtotal=int(doc.get("subtotal", total)),
+        discount_code=doc.get("discount_code"),
+        discount_amount=int(doc.get("discount_amount", 0)),
+        total=total,
         status=doc["status"],
         payment_status=doc["payment_status"],
         payment_method=doc["payment_method"],

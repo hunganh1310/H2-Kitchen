@@ -24,11 +24,16 @@ SEED_ADMINS = [
 
 
 # Initial menu (CLAUDE.md §5). Managed dynamically via the admin panel afterwards.
-# Prices are in VND. The Indomie noodle bowl carries the topping system.
+# Prices are in VND. Products live in one collection distinguished by ``kind``:
+#   fnb    → food & drink; category "prepared" (chế biến) or "bottled" (đóng chai)
+#   rental → gear for hire; category is a free admin-defined group
+# Closing the kitchen blocks only "prepared" items.
 SEED_MENU = [
+    # --- F&B: prepared (đồ chế biến) — blocked when the kitchen is closed ---
     {
         "name": "Mì trộn Indomie",
-        "category": "food",
+        "kind": "fnb",
+        "category": "prepared",
         "price": 20000,
         "description": "Mì trộn Indomie sốt đặc trưng, thêm topping tuỳ chọn.",
         "image_url": None,
@@ -42,14 +47,21 @@ SEED_MENU = [
             {"name": "Rau cải", "price": 3000},
         ],
     },
-    {"name": "Coca-Cola", "category": "drink", "price": 12000, "quantity": 24},
-    {"name": "Pepsi", "category": "drink", "price": 12000, "quantity": 24},
-    {"name": "Sprite", "category": "drink", "price": 12000, "quantity": 18},
-    {"name": "Sting dâu", "category": "drink", "price": 12000, "quantity": 20},
-    {"name": "Red Bull", "category": "drink", "price": 15000, "quantity": 15},
-    {"name": "Trà Cozy", "category": "drink", "price": 10000, "quantity": 20},
-    {"name": "Trà TEA+", "category": "drink", "price": 12000, "quantity": 18},
-    {"name": "Nước suối", "category": "drink", "price": 5000, "quantity": 30},
+    {"name": "Trà chanh", "kind": "fnb", "category": "prepared", "price": 15000, "quantity": 30},
+    {"name": "Trà đào", "kind": "fnb", "category": "prepared", "price": 18000, "quantity": 30},
+    # --- F&B: bottled (đồ đóng chai) — always available ---
+    {"name": "Coca-Cola", "kind": "fnb", "category": "bottled", "price": 12000, "quantity": 24},
+    {"name": "Pepsi", "kind": "fnb", "category": "bottled", "price": 12000, "quantity": 24},
+    {"name": "Sprite", "kind": "fnb", "category": "bottled", "price": 12000, "quantity": 18},
+    {"name": "Sting dâu", "kind": "fnb", "category": "bottled", "price": 12000, "quantity": 20},
+    {"name": "Red Bull", "kind": "fnb", "category": "bottled", "price": 15000, "quantity": 15},
+    {"name": "Trà Cozy", "kind": "fnb", "category": "bottled", "price": 10000, "quantity": 20},
+    {"name": "Trà TEA+", "kind": "fnb", "category": "bottled", "price": 12000, "quantity": 18},
+    {"name": "Nước suối", "kind": "fnb", "category": "bottled", "price": 5000, "quantity": 30},
+    # --- Rental gear (đồ cho thuê) ---
+    {"name": "Đàn guitar Yamaha", "kind": "rental", "category": "Guitar", "price": 50000, "quantity": 3},
+    {"name": "Đàn bass Fender", "kind": "rental", "category": "Bass", "price": 60000, "quantity": 2},
+    {"name": "Tai nghe IEM Shure", "kind": "rental", "category": "IEM", "price": 40000, "quantity": 4},
 ]
 
 
@@ -76,6 +88,7 @@ async def seed_menu(db) -> int:
             continue
         doc = {
             "name": item["name"],
+            "kind": item.get("kind", "fnb"),
             "category": item["category"],
             "price": item["price"],
             "description": item.get("description", ""),
@@ -86,6 +99,28 @@ async def seed_menu(db) -> int:
         }
         await db.menu_items.insert_one(doc)
     return await db.menu_items.count_documents({})
+
+
+async def migrate_menu_categories(db) -> None:
+    """Backfill ``kind`` and re-map legacy categories on existing menu docs.
+
+    Idempotent — only touches documents that predate the ``kind`` field:
+      category "food"  → kind "fnb", category "prepared"
+      category "drink" → kind "fnb", category "bottled"
+    (Admins can move individual teas from bottled → prepared afterwards.)
+    """
+    await db.menu_items.update_many(
+        {"kind": {"$exists": False}, "category": "food"},
+        {"$set": {"kind": "fnb", "category": "prepared"}},
+    )
+    await db.menu_items.update_many(
+        {"kind": {"$exists": False}, "category": "drink"},
+        {"$set": {"kind": "fnb", "category": "bottled"}},
+    )
+    # Safety net for any remaining doc without a kind.
+    await db.menu_items.update_many(
+        {"kind": {"$exists": False}}, {"$set": {"kind": "fnb"}}
+    )
 
 
 async def _main() -> None:

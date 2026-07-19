@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { Category } from '../api/menu'
+import type { Category, Kind } from '../api/menu'
 
 export interface CartTopping {
   name: string
@@ -11,6 +11,7 @@ export interface CartLine {
   key: string
   menuItemId: string
   name: string
+  kind: Kind
   category: Category
   basePrice: number
   toppings: CartTopping[]
@@ -32,7 +33,7 @@ interface CartState {
 }
 
 const CartContext = createContext<CartState | undefined>(undefined)
-const STORAGE_KEY = 'h2_cart'
+const DEFAULT_STORAGE_KEY = 'h2_cart'
 
 /** Two lines merge only if the same product, toppings (name + qty), and note. */
 function makeKey(line: Pick<NewCartLine, 'menuItemId' | 'toppings' | 'note'>): string {
@@ -45,10 +46,20 @@ export function lineTotal(line: CartLine): number {
   return unit * line.qty
 }
 
-export function CartProvider({ children }: { children: ReactNode }) {
+/**
+ * A cart scoped to `storageKey`. The F&B menu and the rental page each mount
+ * their own provider with a distinct key, so their carts stay independent.
+ */
+export function CartProvider({
+  children,
+  storageKey = DEFAULT_STORAGE_KEY,
+}: {
+  children: ReactNode
+  storageKey?: string
+}) {
   const [lines, setLines] = useState<CartLine[]>(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
+      const raw = localStorage.getItem(storageKey)
       if (!raw) return []
       const parsed = JSON.parse(raw) as CartLine[]
       // Migrate carts saved before per-topping quantities existed.
@@ -62,8 +73,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lines))
-  }, [lines])
+    localStorage.setItem(storageKey, JSON.stringify(lines))
+  }, [storageKey, lines])
 
   function addLine(input: NewCartLine) {
     const key = makeKey(input)

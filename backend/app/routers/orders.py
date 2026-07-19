@@ -11,6 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from ..db import get_db
 from ..models.order import CheckoutRequest, OrderOut, to_order_out
+from ..services import discount as discount_service
 from ..services.kitchen import is_kitchen_open
 from ..services.notifications import send_new_order_notification
 from ..utils import parse_object_id
@@ -33,14 +34,23 @@ async def _generate_order_code(db) -> str:
 async def checkout(payload: CheckoutRequest, background: BackgroundTasks):
     db = get_db()
 
-    # Closing the kitchen only stops food orders — drinks are always available.
+    # Closing the kitchen only stops prepared (chế biến) items — bottled drinks
+    # and rental gear are always available.
     kitchen_open = await is_kitchen_open(db)
+
+    # Validate the discount code up front so an invalid code fails fast (before
+    # any stock is touched).
+    if payload.discount_code and not discount_service.validate(payload.discount_code):
+        raise HTTPException(
+            status_code=400, detail="Mã giảm giá không hợp lệ hoặc đã hết hạn"
+        )
 
     # 1) Resolve every line against the live menu; compute prices server-side.
     order_items: list[dict] = []
     decrements: list[tuple] = []  # (ObjectId, qty)
-    total = 0
-    has_food = False
+    subtotal = 0
+    has_prepared = False
+    has_rental = False
 
     for line in payload.items:
         oid = parse_object_id(line.menu_item_id)
@@ -48,8 +58,11 @@ async def checkout(payload: CheckoutRequest, background: BackgroundTasks):
         if not item or not item.get("is_available", True):
             raise HTTPException(status_code=400, detail="Có sản phẩm không còn khả dụng")
 
-        if item.get("category") == "food":
-            has_food = True
+        kind = item.get("kind", "fnb")
+        if kind == "rental":
+            has_rental = True
+        elif item.get("category") == "prepared":
+            has_prepared = True
 
         stock = int(item.get("quantity", 0))
         if stock < line.qty:
@@ -70,11 +83,13 @@ async def checkout(payload: CheckoutRequest, background: BackgroundTasks):
 
         unit_price = int(item["price"]) + toppings_cost
         line_total = unit_price * line.qty
-        total += line_total
+        subtotal += line_total
         order_items.append(
             {
                 "menu_item_id": str(oid),
                 "name": item["name"],
+                "kind": kind,
+                "category": item.get("category"),
                 "qty": line.qty,
                 "toppings": chosen,
                 "unit_price": unit_price,
@@ -84,12 +99,20 @@ async def checkout(payload: CheckoutRequest, background: BackgroundTasks):
         )
         decrements.append((oid, line.qty))
 
-    # Enforce the kitchen gate: only food is blocked when the kitchen is closed.
-    if not kitchen_open and has_food:
+    # Enforce the kitchen gate: only prepared items are blocked when closed.
+    if not kitchen_open and has_prepared:
         raise HTTPException(
             status_code=403,
-            detail="Bếp đang đóng cửa — hiện chỉ nhận đồ uống, tạm không nhận đồ ăn.",
+            detail="Bếp đang đóng cửa — hiện chỉ nhận đồ đóng chai, tạm không nhận đồ chế biến.",
         )
+
+    # Apply the discount (F&B lines only; rentals never discounted).
+    discount_amount = 0
+    discount_code = None
+    if payload.discount_code:
+        discount_amount = discount_service.compute_discount(order_items)
+        discount_code = payload.discount_code.strip().upper()
+    total = subtotal - discount_amount
 
     # 2) Decrement stock with a guard; roll back on partial failure (race safety).
     applied: list[tuple] = []
@@ -110,10 +133,14 @@ async def checkout(payload: CheckoutRequest, background: BackgroundTasks):
     # in the VietQR transfer content (auto-confirmed via the bank webhook).
     doc = {
         "order_code": await _generate_order_code(db),
+        "kind": "rental" if has_rental and not has_prepared else "fnb",
         "customer_name": payload.customer_name.strip(),
         "room_number": payload.room_number.strip(),
         "phone": (payload.phone or "").strip() or None,
         "items": order_items,
+        "subtotal": subtotal,
+        "discount_code": discount_code,
+        "discount_amount": discount_amount,
         "total": total,
         "transfer_amount": total,
         "status": "pending",

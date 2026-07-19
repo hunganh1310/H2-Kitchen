@@ -3,14 +3,14 @@ import { useCart } from '../context/CartContext'
 import { formatVnd } from '../lib/format'
 
 /** Fixed bottom bar shown when the cart has items (mobile-first). */
-export default function CartBar() {
+export default function CartBar({ cartPath = '/cart' }: { cartPath?: string }) {
   const { totalQty, totalAmount } = useCart()
   if (totalQty === 0) return null
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-800 bg-neutral-900/95 p-3 backdrop-blur">
       <Link
-        to="/cart"
+        to={cartPath}
         className="mx-auto flex max-w-3xl items-center justify-between rounded-xl bg-indigo-400 px-5 py-3 font-semibold text-neutral-950 transition hover:bg-indigo-300"
       >
         <span className="flex items-center gap-2">

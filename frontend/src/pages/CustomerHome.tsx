@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getPublicMenu, type Category, type MenuItem } from '../api/menu'
+import { getPublicMenu, FNB_CATEGORY_LABEL, type FnbCategory, type MenuItem } from '../api/menu'
 import { getKitchenStatus } from '../api/kitchen'
 import CartBar from '../components/CartBar'
+import MenuCard from '../components/MenuCard'
 import ProductModal from '../components/ProductModal'
-import { formatVnd } from '../lib/format'
 
-const CATEGORY_LABEL: Record<Category, string> = {
-  food: 'Đồ ăn',
-  drink: 'Đồ uống',
-}
+// Prepared first (the kitchen's signature items), bottled below.
+const SECTION_ORDER: FnbCategory[] = ['prepared', 'bottled']
 
 export default function CustomerHome() {
   const [items, setItems] = useState<MenuItem[]>([])
@@ -19,7 +17,7 @@ export default function CustomerHome() {
   const [kitchenOpen, setKitchenOpen] = useState(true)
 
   useEffect(() => {
-    getPublicMenu()
+    getPublicMenu('fnb')
       .then(setItems)
       .catch(() => setError('Không tải được menu. Vui lòng thử lại.'))
       .finally(() => setLoading(false))
@@ -29,8 +27,10 @@ export default function CustomerHome() {
   }, [])
 
   const grouped = useMemo(() => {
-    const g: Record<Category, MenuItem[]> = { food: [], drink: [] }
-    for (const item of items) g[item.category].push(item)
+    const g: Record<FnbCategory, MenuItem[]> = { prepared: [], bottled: [] }
+    for (const item of items) {
+      if (item.category === 'prepared' || item.category === 'bottled') g[item.category].push(item)
+    }
     return g
   }, [items])
 
@@ -51,7 +51,7 @@ export default function CustomerHome() {
         {!kitchenOpen && (
           <div className="mb-5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-200">
             🍜 <span className="font-semibold">Bếp đang đóng.</span> Hiện chỉ nhận{' '}
-            <span className="font-semibold">đồ uống</span> — tạm không nhận đồ ăn.
+            <span className="font-semibold">đồ đóng chai</span> — tạm không nhận đồ chế biến.
           </div>
         )}
         {loading && <p className="text-neutral-500">Đang tải menu…</p>}
@@ -60,16 +60,16 @@ export default function CustomerHome() {
           <p className="text-neutral-500">Chưa có món nào trong menu.</p>
         )}
 
-        {(['food', 'drink'] as Category[]).map((cat) =>
+        {SECTION_ORDER.map((cat) =>
           grouped[cat].length === 0 ? null : (
             <section key={cat} className="mb-8">
-              <h2 className="mb-3 text-lg font-bold text-indigo-400">{CATEGORY_LABEL[cat]}</h2>
+              <h2 className="mb-3 text-lg font-bold text-indigo-400">{FNB_CATEGORY_LABEL[cat]}</h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {grouped[cat].map((item) => (
                   <MenuCard
                     key={item.id}
                     item={item}
-                    disabled={!kitchenOpen && item.category === 'food'}
+                    disabled={!kitchenOpen && item.category === 'prepared'}
                     onSelect={() => setActive(item)}
                   />
                 ))}
@@ -82,57 +82,5 @@ export default function CustomerHome() {
       {active && <ProductModal item={active} onClose={() => setActive(null)} />}
       <CartBar />
     </div>
-  )
-}
-
-function MenuCard({
-  item,
-  disabled,
-  onSelect,
-}: {
-  item: MenuItem
-  disabled?: boolean
-  onSelect: () => void
-}) {
-  const soldOut = !item.in_stock
-  const blocked = soldOut || !!disabled
-  return (
-    <button
-      type="button"
-      onClick={blocked ? undefined : onSelect}
-      disabled={blocked}
-      className={`flex gap-3 rounded-xl border border-neutral-800 bg-neutral-900/50 p-3 text-left transition ${
-        blocked ? 'opacity-60' : 'hover:border-neutral-700 active:scale-[0.99]'
-      }`}
-    >
-      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-800/60">
-        {item.image_url ? (
-          <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
-        ) : (
-          <span className="text-3xl">{item.category === 'food' ? '🍜' : '🥤'}</span>
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold">{item.name}</h3>
-          {soldOut && (
-            <span className="shrink-0 rounded bg-red-950/70 px-2 py-0.5 text-[10px] font-semibold text-red-300">
-              Hết hàng
-            </span>
-          )}
-        </div>
-        {item.description && (
-          <p className="mt-0.5 line-clamp-2 text-xs text-neutral-400">{item.description}</p>
-        )}
-        <div className="mt-auto flex items-center justify-between pt-2">
-          <span className="font-bold text-indigo-400">{formatVnd(item.price)}</span>
-          {!blocked && (
-            <span className="rounded-lg bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-200">
-              + Thêm
-            </span>
-          )}
-        </div>
-      </div>
-    </button>
   )
 }

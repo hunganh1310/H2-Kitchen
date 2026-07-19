@@ -22,11 +22,14 @@ export interface CheckoutPayload {
   phone?: string | null
   items: CheckoutItem[]
   payment_method: PaymentMethod
+  discount_code?: string | null
 }
 
 export interface OrderItem {
   menu_item_id: string
   name: string
+  kind: 'fnb' | 'rental'
+  category: string | null
   qty: number
   toppings: { name: string; price: number; qty: number }[]
   unit_price: number
@@ -47,10 +50,14 @@ export interface VietQrInfo {
 export interface Order {
   id: string
   order_code: string
+  kind: 'fnb' | 'rental'
   customer_name: string
   room_number: string
   phone: string | null
   items: OrderItem[]
+  subtotal: number
+  discount_code: string | null
+  discount_amount: number
   total: number
   transfer_amount: number
   status: OrderStatus

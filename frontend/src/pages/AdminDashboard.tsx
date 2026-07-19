@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { changePassword } from '../api/auth'
 import { testDiscord } from '../api/diagnostics'
+import { getAdminDiscountCode, type AdminDiscountCode } from '../api/discount'
 import { ApiError } from '../api/client'
 import KitchenToggle from '../components/KitchenToggle'
 import { useAuth } from '../context/AuthContext'
@@ -101,10 +102,13 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        <DiscountCard />
+
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {([
             { label: 'Đơn hàng', to: '/admin/orders', hint: 'Xem & xử lý đơn, đóng/mở bếp' },
-            { label: 'Quản lý menu', to: '/admin/menu', hint: 'Sản phẩm, topping, tồn kho' },
+            { label: 'Quản lý menu', to: '/admin/menu', hint: 'Đồ đóng chai / chế biến, topping, tồn kho' },
+            { label: 'Cho thuê đồ', to: '/admin/rental', hint: 'Đàn, IEM… — trang /renting' },
             { label: 'Quảng cáo', to: '/admin/ads', hint: 'Banner trang chủ & popup' },
             { label: 'Thống kê', hint: 'Sắp ra mắt' },
           ] as const).map((card) => {
@@ -135,6 +139,99 @@ export default function AdminDashboard() {
       </main>
 
       {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
+    </div>
+  )
+}
+
+function DiscountCard() {
+  const [data, setData] = useState<AdminDiscountCode | null>(null)
+  const [error, setError] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [remaining, setRemaining] = useState('')
+
+  async function load() {
+    try {
+      setData(await getAdminDiscountCode())
+      setError(false)
+    } catch {
+      setError(true)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  // Countdown to the next rotation; reload the code when it expires.
+  useEffect(() => {
+    if (!data) return
+    const until = new Date(data.valid_until).getTime()
+    const tick = () => {
+      const ms = until - Date.now()
+      if (ms <= 0) {
+        setRemaining('Đang đổi mã…')
+        load()
+        return
+      }
+      const h = Math.floor(ms / 3_600_000)
+      const m = Math.floor((ms % 3_600_000) / 60_000)
+      const s = Math.floor((ms % 60_000) / 1000)
+      setRemaining(`${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [data])
+
+  async function copy() {
+    if (!data) return
+    try {
+      await navigator.clipboard.writeText(data.code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* clipboard blocked — the code is visible to copy manually */
+    }
+  }
+
+  if (error) {
+    return (
+      <div className="mt-8 rounded-xl border border-neutral-800 bg-neutral-900/50 p-5 text-sm text-neutral-500">
+        Không tải được mã giảm giá.
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-8 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold text-neutral-300">Mã giảm giá khách quen</div>
+          <p className="mt-1 text-xs text-neutral-500">
+            {data
+              ? `Giảm ${data.prepared_percent}% đồ chế biến · ${data.bottled_percent}% đồ đóng chai · đổi mã mỗi ${data.rotates_every_hours}h`
+              : 'Đang tải…'}
+          </p>
+          {data && (
+            <p className="mt-1 text-xs text-neutral-500">
+              Đổi mã sau: <span className="font-mono text-neutral-300">{remaining}</span>
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="rounded-lg bg-neutral-950 px-4 py-2 font-mono text-2xl font-bold tracking-[0.3em] text-indigo-300">
+            {data?.code ?? '••••••'}
+          </span>
+          <button
+            type="button"
+            onClick={copy}
+            disabled={!data}
+            className="rounded-lg border border-neutral-700 px-3 py-2 text-sm text-neutral-300 transition hover:border-indigo-400 hover:text-indigo-400 disabled:opacity-50"
+          >
+            {copied ? '✓ Đã chép' : 'Sao chép'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

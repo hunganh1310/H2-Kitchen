@@ -61,14 +61,18 @@ export default function OrderPage() {
     }
   }
 
+  // Reorder restores into the F&B cart (this page is under the F&B provider),
+  // so only F&B lines are re-added. Rental orders show a "Thuê lại" link instead.
   function handleReorder() {
     if (!order) return
     for (const it of order.items) {
+      if (it.kind !== 'fnb') continue
       const toppingSum = it.toppings.reduce((s, t) => s + t.price * t.qty, 0)
       addLine({
         menuItemId: it.menu_item_id,
         name: it.name,
-        category: 'food', // category not stored on the order; harmless for cart display
+        kind: 'fnb',
+        category: it.category ?? 'prepared',
         basePrice: it.unit_price - toppingSum,
         toppings: it.toppings.map((t) => ({ name: t.name, price: t.price, qty: t.qty })),
         note: it.note ?? '',
@@ -147,6 +151,18 @@ export default function OrderPage() {
                   <span className="shrink-0 text-sm text-indigo-300">{formatVnd(it.price)}</span>
                 </li>
               ))}
+              {order.discount_amount > 0 && (
+                <>
+                  <li className="flex justify-between px-4 pt-4 text-sm text-neutral-400">
+                    <span>Tạm tính</span>
+                    <span>{formatVnd(order.subtotal)}</span>
+                  </li>
+                  <li className="flex justify-between px-4 pt-1 text-sm text-green-400">
+                    <span>Giảm giá{order.discount_code ? ` (${order.discount_code})` : ''}</span>
+                    <span>−{formatVnd(order.discount_amount)}</span>
+                  </li>
+                </>
+              )}
               <li className="flex justify-between p-4 font-bold">
                 <span>Tổng cộng</span>
                 <span className="text-indigo-400">{formatVnd(order.total)}</span>
@@ -164,13 +180,22 @@ export default function OrderPage() {
                   Huỷ đơn
                 </button>
               )}
-              <button
-                type="button"
-                onClick={handleReorder}
-                className="flex-1 rounded-xl bg-indigo-400 px-5 py-3 font-semibold text-neutral-950 transition hover:bg-indigo-300"
-              >
-                Đặt lại
-              </button>
+              {order.kind === 'rental' ? (
+                <Link
+                  to="/renting"
+                  className="flex-1 rounded-xl bg-indigo-400 px-5 py-3 text-center font-semibold text-neutral-950 transition hover:bg-indigo-300"
+                >
+                  Thuê lại
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleReorder}
+                  className="flex-1 rounded-xl bg-indigo-400 px-5 py-3 font-semibold text-neutral-950 transition hover:bg-indigo-300"
+                >
+                  Đặt lại
+                </button>
+              )}
             </div>
 
             {order.status === 'preparing' && (

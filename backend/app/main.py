@@ -19,18 +19,22 @@ from .routers import (
     admin_orders,
     ads,
     auth,
+    discount,
     kitchen,
     menu,
     orders,
     webhooks,
 )
-from .seed import seed_admins, seed_menu
+from .seed import migrate_menu_categories, seed_admins, seed_menu
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- startup ---
     await connect_to_mongo()
+    # Idempotent: backfill kind/category on legacy menu docs (food/drink →
+    # fnb + bottled/prepared). Safe to run on every startup.
+    await migrate_menu_categories(get_db())
     if settings.seed_on_startup:
         await seed_admins(get_db())
         await seed_menu(get_db())
@@ -71,6 +75,9 @@ app.include_router(admin_orders.router)
 # Kitchen open/close: public status + admin control.
 app.include_router(kitchen.router)
 app.include_router(kitchen.admin_router)
+# Discount codes: public validate + admin current-code.
+app.include_router(discount.router)
+app.include_router(discount.admin_router)
 # Ads/promo banners: public listing + admin CRUD + media upload.
 app.include_router(ads.public_router)
 app.include_router(ads.admin_router)

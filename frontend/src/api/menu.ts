@@ -1,6 +1,16 @@
 import { apiFetch, getToken } from './client'
 
-export type Category = 'food' | 'drink'
+/** Product kind: food & drink, or rental gear. */
+export type Kind = 'fnb' | 'rental'
+/** F&B category: đồ đóng chai (bottled) or đồ chế biến (prepared). */
+export type FnbCategory = 'bottled' | 'prepared'
+/** For rentals `category` is a free admin-defined group name, hence `string`. */
+export type Category = string
+
+export const FNB_CATEGORY_LABEL: Record<FnbCategory, string> = {
+  prepared: 'Đồ chế biến',
+  bottled: 'Đồ đóng chai',
+}
 
 export interface Topping {
   name: string
@@ -10,6 +20,7 @@ export interface Topping {
 export interface MenuItem {
   id: string
   name: string
+  kind: Kind
   category: Category
   price: number
   description: string
@@ -22,6 +33,7 @@ export interface MenuItem {
 
 export interface MenuItemInput {
   name: string
+  kind?: Kind
   category: Category
   price: number
   description?: string
@@ -33,15 +45,17 @@ export interface MenuItemInput {
 
 // --- Public (customer) ---------------------------------------------------
 
-export async function getPublicMenu(category?: Category): Promise<MenuItem[]> {
-  const qs = category ? `?category=${category}` : ''
-  return apiFetch<MenuItem[]>(`/menu${qs}`)
+export async function getPublicMenu(kind: Kind = 'fnb', category?: Category): Promise<MenuItem[]> {
+  const params = new URLSearchParams({ kind })
+  if (category) params.set('category', category)
+  return apiFetch<MenuItem[]>(`/menu?${params.toString()}`)
 }
 
 // --- Admin ---------------------------------------------------------------
 
-export async function adminListMenu(): Promise<MenuItem[]> {
-  return apiFetch<MenuItem[]>('/admin/menu-items')
+export async function adminListMenu(kind?: Kind): Promise<MenuItem[]> {
+  const qs = kind ? `?kind=${kind}` : ''
+  return apiFetch<MenuItem[]>(`/admin/menu-items${qs}`)
 }
 
 export async function createMenuItem(input: MenuItemInput): Promise<MenuItem> {

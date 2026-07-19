@@ -10,7 +10,8 @@ from starlette.concurrency import run_in_threadpool
 from ..db import get_db
 from ..deps import require_admin
 from ..models.menu import (
-    Category,
+    FNB_CATEGORIES,
+    Kind,
     MenuItemCreate,
     MenuItemOut,
     MenuItemUpdate,
@@ -27,9 +28,11 @@ router = APIRouter(
 
 
 @router.get("", response_model=list[MenuItemOut])
-async def list_items(category: Category | None = None):
+async def list_items(kind: Kind | None = None, category: str | None = None):
     """All items, including ones hidden from customers (``is_available=False``)."""
     query: dict = {}
+    if kind:
+        query["kind"] = kind
     if category:
         query["category"] = category
     cursor = get_db().menu_items.find(query).sort([("category", 1), ("name", 1)])
@@ -58,6 +61,18 @@ async def update_item(item_id: str, payload: MenuItemUpdate):
     updates = payload.model_dump(exclude_unset=True)
     db = get_db()
     if updates:
+        # If category changes without kind, validate it against the item's kind.
+        if "category" in updates:
+            existing = await db.menu_items.find_one({"_id": oid})
+            if not existing:
+                raise HTTPException(status_code=404, detail="Không tìm thấy sản phẩm")
+            kind = updates.get("kind", existing.get("kind", "fnb"))
+            category = updates["category"]
+            if kind == "fnb" and category not in FNB_CATEGORIES:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Đồ ăn/uống phải thuộc 'bottled' hoặc 'prepared'",
+                )
         result = await db.menu_items.update_one({"_id": oid}, {"$set": updates})
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Không tìm thấy sản phẩm")

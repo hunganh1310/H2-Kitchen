@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24  # 1 day
 
+    # --- Discount codes (regular-customer perk) ---
+    # Optional dedicated secret for the rotating discount code. When empty, the
+    # code is derived from jwt_secret, so no extra configuration is required.
+    discount_secret: str = ""
+
     # --- External services (used in later roadmap steps) ---
     discord_webhook_url: str = ""
     bank_account_info: str = ""

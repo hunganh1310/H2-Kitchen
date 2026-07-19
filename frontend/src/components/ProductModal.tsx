@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { MenuItem } from '../api/menu'
 import { useCart, type CartTopping } from '../context/CartContext'
+import { productIcon } from './MenuCard'
 import { formatVnd } from '../lib/format'
 
 const MAX_TOPPING_QTY = 20
@@ -25,6 +26,7 @@ export default function ProductModal({ item, onClose }: { item: MenuItem; onClos
     addLine({
       menuItemId: item.id,
       name: item.name,
+      kind: item.kind,
       category: item.category,
       basePrice: item.price,
       toppings: chosen,
@@ -48,7 +50,7 @@ export default function ProductModal({ item, onClose }: { item: MenuItem; onClos
           {item.image_url ? (
             <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
           ) : (
-            <span className="text-5xl">{item.category === 'food' ? '🍜' : '🥤'}</span>
+            <span className="text-5xl">{productIcon(item)}</span>
           )}
         </div>
 

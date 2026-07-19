@@ -2,16 +2,29 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { checkout, type PaymentMethod } from '../api/orders'
 import { getKitchenStatus } from '../api/kitchen'
+import { validateDiscount, type DiscountValidation } from '../api/discount'
 import { ApiError } from '../api/client'
-import { lineTotal, useCart } from '../context/CartContext'
+import { lineTotal, useCart, type CartLine } from '../context/CartContext'
 import { addMyOrder } from '../lib/orders-store'
 import { formatVnd } from '../lib/format'
 
 const ROOM_OPTIONS = ['Phòng chờ (200)', 'Phòng tập chính (201)', 'Smoking Area (400)']
 
-export default function CartPage() {
+type CartMode = 'fnb' | 'rental'
+
+/** Per-line discount rate (%) for an applied, valid F&B discount code. */
+function linePercent(line: CartLine, d: DiscountValidation | null): number {
+  if (!d?.valid || line.kind !== 'fnb') return 0
+  if (line.category === 'prepared') return d.prepared_percent
+  if (line.category === 'bottled') return d.bottled_percent
+  return 0
+}
+
+export default function CartPage({ mode = 'fnb' }: { mode?: CartMode }) {
   const { lines, totalAmount, setQty, removeLine, clear } = useCart()
   const navigate = useNavigate()
+  const isFnb = mode === 'fnb'
+  const backTo = isFnb ? '/order' : '/renting'
 
   const [name, setName] = useState('')
   const [room, setRoom] = useState(ROOM_OPTIONS[0])
@@ -21,15 +34,61 @@ export default function CartPage() {
   const [error, setError] = useState<string | null>(null)
   const [kitchenOpen, setKitchenOpen] = useState(true)
 
+  // Discount (F&B only)
+  const [codeInput, setCodeInput] = useState('')
+  const [discount, setDiscount] = useState<DiscountValidation | null>(null)
+  const [appliedCode, setAppliedCode] = useState<string | null>(null)
+  const [checkingCode, setCheckingCode] = useState(false)
+  const [codeMsg, setCodeMsg] = useState<string | null>(null)
+
   useEffect(() => {
+    if (!isFnb) return
     getKitchenStatus()
       .then((s) => setKitchenOpen(s.is_open))
       .catch(() => setKitchenOpen(true))
-  }, [])
+  }, [isFnb])
 
-  // Closing the kitchen only blocks food; a drinks-only cart can still order.
-  const hasFood = lines.some((l) => l.category === 'food')
-  const blockedByKitchen = !kitchenOpen && hasFood
+  // Closing the kitchen only blocks prepared items; bottled/rental still order.
+  const hasPrepared = lines.some((l) => l.kind === 'fnb' && l.category === 'prepared')
+  const blockedByKitchen = isFnb && !kitchenOpen && hasPrepared
+
+  const discountAmount = lines.reduce(
+    (s, l) => s + Math.round((lineTotal(l) * linePercent(l, discount)) / 100),
+    0,
+  )
+  const payable = totalAmount - discountAmount
+
+  async function handleApplyCode() {
+    const code = codeInput.trim().toUpperCase()
+    setCodeMsg(null)
+    if (!code) return
+    setCheckingCode(true)
+    try {
+      const res = await validateDiscount(code)
+      if (res.valid) {
+        setDiscount(res)
+        setAppliedCode(code)
+        setCodeMsg(
+          `Đã áp mã — giảm ${res.prepared_percent}% đồ chế biến, ${res.bottled_percent}% đồ đóng chai.`,
+        )
+      } else {
+        setDiscount(null)
+        setAppliedCode(null)
+        setCodeMsg('Mã không hợp lệ hoặc đã hết hạn.')
+      }
+    } catch {
+      setCodeMsg('Không kiểm tra được mã, vui lòng thử lại.')
+    } finally {
+      setCheckingCode(false)
+    }
+  }
+
+  function clearCode() {
+    setDiscount(null)
+    setAppliedCode(null)
+    setCodeInput('')
+    setCodeMsg(null)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -45,6 +104,7 @@ export default function CartPage() {
         room_number: room.trim(),
         phone: phone.trim() || null,
         payment_method: payment,
+        discount_code: isFnb && appliedCode ? appliedCode : null,
         items: lines.map((l) => ({
           menu_item_id: l.menuItemId,
           qty: l.qty,
@@ -72,10 +132,10 @@ export default function CartPage() {
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
       <header className="sticky top-0 z-10 border-b border-neutral-900 bg-neutral-950/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Link to="/order" className="text-neutral-400 hover:text-indigo-400">
-            ← Menu
+          <Link to={backTo} className="text-neutral-400 hover:text-indigo-400">
+            ← {isFnb ? 'Menu' : 'Thuê đồ'}
           </Link>
-          <h1 className="text-lg font-bold">Giỏ hàng</h1>
+          <h1 className="text-lg font-bold">{isFnb ? 'Giỏ hàng' : 'Giỏ thuê đồ'}</h1>
         </div>
       </header>
 
@@ -84,10 +144,10 @@ export default function CartPage() {
           <div className="py-16 text-center">
             <p className="text-neutral-400">Giỏ hàng đang trống.</p>
             <Link
-              to="/order"
+              to={backTo}
               className="mt-4 inline-block rounded-lg bg-indigo-400 px-5 py-2.5 font-semibold text-neutral-950 hover:bg-indigo-300"
             >
-              Chọn món
+              {isFnb ? 'Chọn món' : 'Chọn đồ thuê'}
             </Link>
           </div>
         ) : (
@@ -142,14 +202,61 @@ export default function CartPage() {
 
             {blockedByKitchen && (
               <div className="mt-6 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-200">
-                🍜 <span className="font-semibold">Bếp đang đóng</span> — hiện chỉ nhận đồ uống. Vui
-                lòng bỏ món ăn khỏi giỏ hoặc quay lại sau.
+                🍜 <span className="font-semibold">Bếp đang đóng</span> — hiện chỉ nhận đồ đóng chai. Vui
+                lòng bỏ đồ chế biến khỏi giỏ hoặc quay lại sau.
+              </div>
+            )}
+
+            {/* Discount code (F&B only) */}
+            {isFnb && (
+              <div className="mt-6 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+                <label className="mb-2 block text-xs font-medium text-neutral-400">
+                  Mã giảm giá khách quen (nếu có)
+                </label>
+                {appliedCode ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="rounded-lg bg-indigo-400/10 px-3 py-1.5 font-mono text-sm text-indigo-300">
+                      {appliedCode}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearCode}
+                      className="text-sm text-neutral-500 hover:text-red-400"
+                    >
+                      Bỏ mã
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      value={codeInput}
+                      onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                      placeholder="Nhập mã"
+                      className="input flex-1 font-mono uppercase tracking-wider"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCode}
+                      disabled={checkingCode || !codeInput.trim()}
+                      className="rounded-lg border border-indigo-400 px-4 py-2 text-sm font-semibold text-indigo-300 transition hover:bg-indigo-400/10 disabled:opacity-50"
+                    >
+                      {checkingCode ? '…' : 'Áp mã'}
+                    </button>
+                  </div>
+                )}
+                {codeMsg && (
+                  <p
+                    className={`mt-2 text-xs ${appliedCode ? 'text-green-400' : 'text-amber-400'}`}
+                  >
+                    {codeMsg}
+                  </p>
+                )}
               </div>
             )}
 
             {/* Checkout form */}
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              <h2 className="text-base font-bold">Thông tin nhận món</h2>
+              <h2 className="text-base font-bold">Thông tin nhận {isFnb ? 'món' : 'đồ'}</h2>
               <div>
                 <label className="mb-1 block text-xs font-medium text-neutral-400">
                   Tên của bạn <span className="text-indigo-400">*</span>
@@ -208,13 +315,27 @@ export default function CartPage() {
                 <p className="mt-1 text-xs text-neutral-600">
                   {payment === 'vietqr'
                     ? 'Sau khi đặt, mã QR chuyển khoản (đã điền sẵn số tiền + nội dung) sẽ hiện ra để bạn thanh toán.'
-                    : 'Bạn sẽ trả tiền mặt tại quầy khi nhận món.'}
+                    : 'Bạn sẽ trả tiền mặt tại quầy khi nhận.'}
                 </p>
               </div>
 
-              <div className="flex items-center justify-between border-t border-neutral-800 pt-4">
-                <span className="text-neutral-400">Tổng cộng</span>
-                <span className="text-xl font-bold text-indigo-400">{formatVnd(totalAmount)}</span>
+              <div className="space-y-1 border-t border-neutral-800 pt-4">
+                {discountAmount > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-sm text-neutral-400">
+                      <span>Tạm tính</span>
+                      <span>{formatVnd(totalAmount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-green-400">
+                      <span>Giảm giá{appliedCode ? ` (${appliedCode})` : ''}</span>
+                      <span>−{formatVnd(discountAmount)}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-400">Tổng cộng</span>
+                  <span className="text-xl font-bold text-indigo-400">{formatVnd(payable)}</span>
+                </div>
               </div>
 
               {error && (
@@ -226,7 +347,11 @@ export default function CartPage() {
                 disabled={submitting || blockedByKitchen}
                 className="w-full rounded-xl bg-indigo-400 px-5 py-3 font-semibold text-neutral-950 transition hover:bg-indigo-300 disabled:opacity-50"
               >
-                {blockedByKitchen ? 'Bếp đóng — bỏ món ăn để đặt' : submitting ? 'Đang đặt đơn…' : 'Đặt đơn'}
+                {blockedByKitchen
+                  ? 'Bếp đóng — bỏ đồ chế biến để đặt'
+                  : submitting
+                    ? 'Đang đặt đơn…'
+                    : 'Đặt đơn'}
               </button>
             </form>
           </>
